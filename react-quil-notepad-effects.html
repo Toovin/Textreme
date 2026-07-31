@@ -1,0 +1,2665 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React + Quill Notepad</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-app: #f5f5f5;
+            --bg-surface: #ffffff;
+            --bg-surface-alt: #f0f0f0;
+            --bg-elevated: #e8e8e8;
+            --border: #d0d0d0;
+            --border-focus: #4a90d9;
+            --text: #222;
+            --text-muted: #888;
+            --accent: #4a90d9;
+            --accent-rgb: 74, 144, 217;
+            --accent-hover: #357abd;
+            --danger: #e74c3c;
+            --editor-bg: #ffffff;
+            --editor-text: #222;
+            --code-bg: #f4f4f4;
+            --scrollbar-thumb: #ccc;
+            --scrollbar-track: transparent;
+            --tab-active-border: #4a90d9;
+            --toolbar-bg: #f8f8f8;
+            --toolbar-border: #e0e0e0;
+            --ql-stroke: #444;
+            --ql-fill: #444;
+            --ql-text: #444;
+            --ql-picker-bg: #fff;
+            --ql-picker-hover: #f0f0f0;
+            --ql-tooltip-bg: #fff;
+            --ql-tooltip-border: #ccc;
+            --split-handle: #ddd;
+            --split-handle-hover: #bbb;
+        }
+
+        [data-theme="dark"] {
+            --bg-app: #111;
+            --bg-surface: #1a1a1a;
+            --bg-surface-alt: #242424;
+            --bg-elevated: #2a2a2a;
+            --border: #333;
+            --border-focus: #e94560;
+            --text: #e0e0e0;
+            --text-muted: #888;
+            --accent: #e94560;
+            --accent-rgb: 233, 69, 96;
+            --accent-hover: #c73e54;
+            --danger: #ff6b6b;
+            --editor-bg: #1a1a1a;
+            --editor-text: #d4d4d4;
+            --code-bg: #252525;
+            --scrollbar-thumb: #444;
+            --scrollbar-track: transparent;
+            --tab-active-border: #e94560;
+            --toolbar-bg: #1a1a1a;
+            --toolbar-border: #333;
+            --ql-stroke: #ccc;
+            --ql-fill: #ccc;
+            --ql-text: #ccc;
+            --ql-picker-bg: #222;
+            --ql-picker-hover: #2a2a2a;
+            --ql-tooltip-bg: #222;
+            --ql-tooltip-border: #444;
+            --split-handle: #333;
+            --split-handle-hover: #555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-app);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        #root {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ── Scrollbar ──────────────────────────────── */
+        *::-webkit-scrollbar { width: 8px; height: 8px; }
+        *::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        *::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+        *::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        *::-webkit-scrollbar-corner { background: transparent; }
+
+        /* ── Tab Bar ─────────────────────────────────── */
+        .tab-bar {
+            display: flex;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .tab-bar::-webkit-scrollbar { height: 3px; }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: background 0.15s, color 0.15s;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .tab:hover { background: var(--bg-surface-alt); color: var(--text); }
+        .tab.active {
+            background: var(--bg-elevated);
+            color: var(--text);
+            border-bottom: 2px solid var(--tab-active-border);
+        }
+
+        .tab-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .tab-close {
+            width: 18px; height: 18px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            transition: background 0.15s, color 0.15s;
+            flex-shrink: 0;
+        }
+
+        .tab:hover .tab-close { background: rgba(128,128,128,0.15); }
+        .tab-close:hover { background: var(--danger) !important; color: #fff !important; }
+
+        /* ── Toolbar ─────────────────────────────────── */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .toolbar-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+
+        .toolbar input[type="text"] {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 140px;
+            outline: none;
+        }
+
+        .toolbar input[type="text"]:focus { border-color: var(--border-focus); }
+
+        .toolbar select {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .toolbar button {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .toolbar button:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .toolbar button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .toolbar button.primary:hover { background: var(--accent-hover); }
+
+        /* ── Split Pane Layout ───────────────────────── */
+        .split-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .split-container.vertical {
+            flex-direction: column;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 200px;
+            min-height: 150px;
+            position: relative;
+        }
+
+        .split-handle {
+            flex-shrink: 0;
+            background: var(--split-handle);
+            transition: background 0.15s;
+            z-index: 10;
+        }
+
+        .split-handle:hover { background: var(--split-handle-hover); }
+
+        .split-container:not(.vertical) .split-handle {
+            width: 5px;
+            cursor: col-resize;
+        }
+
+        .split-container.vertical .split-handle {
+            height: 5px;
+            cursor: row-resize;
+        }
+
+        /* ── Pane Header ─────────────────────────────── */
+        .pane-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-surface-alt);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .pane-header .pane-tab-name {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .pane-header .pane-close {
+            margin-left: auto;
+            width: 18px; height: 18px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .pane-header .pane-close:hover { background: var(--danger); color: #fff; }
+
+        /* ── Editor Area ─────────────────────────────── */
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--editor-bg);
+            transition: background 0.2s;
+        }
+
+        /* ── Quill: toolbar ──────────────────────────── */
+        .ql-toolbar.ql-snow {
+            border: none !important;
+            border-bottom: 1px solid var(--toolbar-border) !important;
+            background: var(--toolbar-bg);
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .ql-toolbar.ql-snow .ql-stroke { stroke: var(--ql-stroke) !important; }
+        .ql-toolbar.ql-snow .ql-fill { fill: var(--ql-fill) !important; }
+        .ql-toolbar.ql-snow .ql-picker { color: var(--ql-text) !important; }
+        .ql-toolbar.ql-snow .ql-picker-label { border-color: transparent !important; }
+        .ql-toolbar.ql-snow .ql-picker-label:hover,
+        .ql-toolbar.ql-snow .ql-picker-label.ql-active { color: var(--accent) !important; }
+        .ql-toolbar.ql-snow .ql-picker-label:hover .ql-stroke,
+        .ql-toolbar.ql-snow .ql-picker-label.ql-active .ql-stroke { stroke: var(--accent) !important; }
+        .ql-toolbar.ql-snow .ql-picker-options {
+            background: var(--ql-picker-bg);
+            border-color: var(--ql-tooltip-border);
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .ql-toolbar.ql-snow .ql-picker-item:hover { color: var(--accent) !important; }
+        .ql-toolbar.ql-snow button:hover .ql-stroke,
+        .ql-toolbar.ql-snow button.ql-active .ql-stroke { stroke: var(--accent) !important; }
+        .ql-toolbar.ql-snow button:hover .ql-fill,
+        .ql-toolbar.ql-snow button.ql-active .ql-fill { fill: var(--accent) !important; }
+        .ql-toolbar.ql-snow button:hover,
+        .ql-toolbar.ql-snow button.ql-active { background: transparent; }
+
+        .ql-snow .ql-tooltip {
+            background: var(--ql-tooltip-bg);
+            border-color: var(--ql-tooltip-border);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .ql-snow .ql-tooltip input {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        /* ── Quill: editor ───────────────────────────── */
+        .ql-container.ql-snow {
+            border: none !important;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .ql-editor {
+            min-height: 0;
+            height: 100%;
+            overflow-y: auto;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--editor-text);
+            background: var(--editor-bg);
+            padding: 24px 32px 80px 32px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .ql-editor.ql-blank::before {
+            color: var(--text-muted);
+            font-style: normal;
+            opacity: 0.6;
+        }
+
+        .ql-editor h1 { font-size: 2em; margin: 0.5em 0; }
+        .ql-editor h2 { font-size: 1.5em; margin: 0.4em 0; }
+        .ql-editor h3 { font-size: 1.25em; margin: 0.3em 0; }
+
+        .ql-editor pre {
+            background: var(--code-bg);
+            border-radius: 4px;
+            padding: 12px 16px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .ql-editor blockquote {
+            border-left: 4px solid var(--accent);
+            padding-left: 16px;
+            margin: 12px 0;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .ql-editor a { color: var(--accent); }
+
+        .ql-editor code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+
+        /* ── Char insert animation ───────────────────── */
+        :root {
+            --char-anim-duration: 200ms;
+            --char-anim-offset: -18px;
+            --char-anim-scale: 1.4;
+        }
+
+        /* ── Fly-in (top default) ──────────────────── */
+        @keyframes char-flyIn {
+            0% {
+                opacity: 0;
+                transform: translateY(var(--char-anim-offset)) translateX(var(--char-anim-drift-x, 0px)) scale(var(--char-anim-scale));
+            }
+            60% {
+                opacity: 0.9;
+            }
+            80% {
+                opacity: 1;
+                transform: translateY(-2px) translateX(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(0) translateX(0) scale(1);
+            }
+        }
+
+        /* ── Digitize: pixelate into place ────────── */
+        @keyframes char-digitize {
+            0% {
+                opacity: 0;
+                filter: blur(var(--char-b1, 6px)) contrast(2) brightness(2);
+                transform: scale(var(--char-s1, 1.3));
+            }
+            30% {
+                opacity: 0.6;
+                filter: blur(var(--char-b2, 3px)) contrast(1.5) brightness(1.3);
+                transform: scale(var(--char-s2, 1.1));
+            }
+            60% {
+                opacity: 0.9;
+                filter: blur(var(--char-b3, 1px)) contrast(1.1) brightness(1.05);
+                transform: scale(var(--char-s3, 1.02));
+            }
+            80% {
+                opacity: 1;
+                filter: blur(0) contrast(1) brightness(1);
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1);
+                filter: blur(0);
+            }
+        }
+
+        .char-animate {
+            display: block;
+            position: absolute;
+            pointer-events: none;
+            z-index: 9999;
+            white-space: pre;
+            transform-origin: center center;
+            will-change: transform, opacity, filter;
+        }
+        .char-animate.flyIn {
+            animation: char-flyIn var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .char-animate.digitize {
+            animation: char-digitize var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Destruction: red glow → explode outward ─────── */
+        @keyframes char-destroy {
+            0% {
+                opacity: 1;
+                color: var(--text);
+                text-shadow: none;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+            18% {
+                opacity: 1;
+                color: #ff4444;
+                text-shadow: 0 0 6px #ff0000, 0 0 12px #ff4444;
+                transform: translate(0, 0) scale(var(--char-s1, 1.15)) rotate(0deg);
+            }
+            40% {
+                opacity: 0.95;
+                color: #ff6600;
+                text-shadow: 0 0 10px #ff0000, 0 0 20px #ff4444, 0 0 30px #ff2200;
+                transform:
+                    translate(calc(var(--char-dx, 0px) * 0.25), calc(var(--char-dy, 0px) * 0.2))
+                    scale(var(--char-s2, 1.35))
+                    rotate(calc(var(--char-r1, 20deg) * 0.4));
+            }
+            70% {
+                opacity: 0.55;
+                color: #ffaa00;
+                text-shadow: 0 0 14px #ff4400, 0 0 28px #ff6600;
+                transform:
+                    translate(calc(var(--char-dx, 0px) * 0.7), calc(var(--char-dy, 0px) * 0.75))
+                    scale(var(--char-s3, 1.1))
+                    rotate(calc(var(--char-r1, 20deg) * 0.85));
+            }
+            100% {
+                opacity: 0;
+                color: #ffcc66;
+                text-shadow: 0 0 18px #ff4400, 0 0 36px #ff0000;
+                transform:
+                    translate(var(--char-dx, 0px), var(--char-dy, 0px))
+                    scale(var(--char-s4, 0.55))
+                    rotate(var(--char-r2, 120deg));
+            }
+        }
+
+        .char-animate.destroy {
+            animation: char-destroy var(--char-anim-duration) cubic-bezier(0.15, 0.85, 0.25, 1) forwards;
+        }
+
+        /* ── Debris shard (mass delete building-collapse) ── */
+        @keyframes char-debris {
+            0% {
+                opacity: 1;
+                filter: brightness(1);
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            12% {
+                opacity: 1;
+                filter: brightness(1.8);
+                transform:
+                    translate(calc(var(--char-dx, 0px) * 0.08), calc(var(--char-dy, 0px) * 0.05))
+                    rotate(calc(var(--char-r1, 0deg) * 0.15))
+                    scale(var(--char-s1, 1.2));
+            }
+            55% {
+                opacity: 0.85;
+                filter: brightness(1.15);
+                transform:
+                    translate(calc(var(--char-dx, 0px) * 0.65), calc(var(--char-dy, 0px) * 0.55))
+                    rotate(calc(var(--char-r1, 0deg) * 0.7))
+                    scale(var(--char-s2, 0.95));
+            }
+            100% {
+                opacity: 0;
+                filter: brightness(0.7);
+                transform:
+                    translate(var(--char-dx, 0px), calc(var(--char-dy, 0px) + var(--char-fall, 40px)))
+                    rotate(var(--char-r2, 180deg))
+                    scale(var(--char-s3, 0.35));
+            }
+        }
+        .char-animate.debris {
+            animation: char-debris var(--char-anim-duration) cubic-bezier(0.12, 0.7, 0.25, 1) forwards;
+        }
+
+        /* ── Pop: elastic overshoot ────────────────── */
+        @keyframes char-pop {
+            0% { opacity: 0; transform: scale(0.2); }
+            55% { opacity: 1; transform: scale(var(--char-s1, 1.18)); }
+            78% { opacity: 1; transform: scale(var(--char-s2, 0.94)); }
+            100% { opacity: 0; transform: scale(1); }
+        }
+        .char-animate.pop {
+            animation: char-pop var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Slam: heavy drop with a tiny bounce ───── */
+        @keyframes char-slam {
+            0% { opacity: 0; transform: translateY(var(--char-d1, -30px)) scale(var(--char-s1, 1.2)); }
+            55% { opacity: 1; transform: translateY(var(--char-d2, 3px)) scale(1); }
+            75% { opacity: 1; transform: translateY(var(--char-d3, -1px)) scale(1); }
+            100% { opacity: 0; transform: translateY(0) scale(1); }
+        }
+        .char-animate.slam {
+            animation: char-slam var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Spin: full Z-spin + 3D Y-flip into place ─── */
+        @keyframes char-spin {
+            0% {
+                opacity: 0;
+                transform:
+                    perspective(420px)
+                    rotateY(var(--char-spin-y0, -100deg))
+                    rotateZ(var(--char-spin-z0, -360deg))
+                    scale(var(--char-s1, 0.35));
+            }
+            55% {
+                opacity: 1;
+                transform:
+                    perspective(420px)
+                    rotateY(var(--char-spin-y1, 18deg))
+                    rotateZ(var(--char-spin-z1, 28deg))
+                    scale(var(--char-s2, 1.12));
+            }
+            82% {
+                opacity: 1;
+                transform:
+                    perspective(420px)
+                    rotateY(0deg)
+                    rotateZ(0deg)
+                    scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform:
+                    perspective(420px)
+                    rotateY(0deg)
+                    rotateZ(0deg)
+                    scale(1);
+            }
+        }
+        .char-animate.spin {
+            transform-style: preserve-3d;
+            backface-visibility: visible;
+            animation: char-spin var(--char-anim-duration) cubic-bezier(0.2, 0.85, 0.25, 1) forwards;
+        }
+
+        /* ── Wave: ripple settle ───────────────────── */
+        @keyframes char-wave {
+            0% { opacity: 0; transform: translateY(var(--char-d1, 7px)) scale(var(--char-s1, 0.85)); }
+            30% { opacity: 1; transform: translateY(var(--char-d2, -5px)) scale(var(--char-s2, 1.05)); }
+            55% { opacity: 1; transform: translateY(var(--char-d3, 2px)) scale(1); }
+            80% { opacity: 1; transform: translateY(var(--char-d4, -1px)) scale(1); }
+            100% { opacity: 0; transform: translateY(0) scale(1); }
+        }
+        .char-animate.wave {
+            animation: char-wave var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Evaporate: steam away upward ──────────── */
+        @keyframes char-evaporate {
+            0% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+            35% { opacity: 0.85; transform: translateY(var(--char-d1, -10px)) scale(var(--char-s1, 1.05)); filter: blur(var(--char-b1, 1px)); }
+            70% { opacity: 0.45; transform: translateY(var(--char-d2, -22px)) scale(var(--char-s2, 1.12)); filter: blur(var(--char-b2, 2px)); }
+            100% { opacity: 0; transform: translateY(var(--char-d3, -34px)) scale(var(--char-s3, 1.2)); filter: blur(var(--char-b3, 5px)); }
+        }
+        .char-animate.evaporate {
+            animation: char-evaporate var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Suck: pulled into the caret ───────────── */
+        @keyframes char-suck {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            55% { opacity: 0.9; transform: translate(var(--char-d1, -8px), var(--char-d2, 0px)) scale(0.6); }
+            100% { opacity: 0; transform: translate(var(--char-d3, -12px), var(--char-d4, 0px)) scale(0.05); }
+        }
+        .char-animate.suck {
+            animation: char-suck var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Cut: letter sliced into two halves ────── */
+        @keyframes char-cut {
+            0% { opacity: 1; transform: translateY(0) rotate(0); }
+            40% { opacity: 1; transform: translateY(var(--char-d1, 8px)) rotate(var(--char-r1, 6deg)); }
+            100% { opacity: 0; transform: translateY(var(--char-d2, 28px)) rotate(var(--char-r2, 16deg)); }
+        }
+        .char-animate.cut {
+            animation: char-cut var(--char-anim-duration) linear forwards;
+        }
+
+        /* ── Typewriter: wipe + strike underline ──── */
+        @keyframes char-typewriter {
+            0% {
+                opacity: 0;
+                clip-path: inset(0 100% 0 0);
+                transform: translateX(var(--char-d1, -6px));
+            }
+            55% {
+                opacity: 1;
+                clip-path: inset(0 0 0 0);
+                transform: translateX(0);
+            }
+            100% {
+                opacity: 0;
+                clip-path: inset(0 0 0 0);
+                transform: translateX(0);
+            }
+        }
+        .char-animate.typewriter {
+            animation: char-typewriter var(--char-anim-duration) steps(6, end) forwards;
+        }
+        @keyframes char-typewriter-bar {
+            0% { opacity: 0; transform: scaleX(0.2); }
+            25% { opacity: 1; transform: scaleX(1); }
+            70% { opacity: 0.85; transform: scaleX(1); }
+            100% { opacity: 0; transform: scaleX(0.4); }
+        }
+        .char-typewriter-bar {
+            position: absolute;
+            pointer-events: none;
+            z-index: 9998;
+            height: 2px;
+            border-radius: 1px;
+            transform-origin: left center;
+            animation: char-typewriter-bar var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Glitch: RGB split + jitter ────────────── */
+        @keyframes char-glitch {
+            0% {
+                opacity: 0;
+                transform: translate(var(--char-d1, -4px), var(--char-d2, 2px)) skewX(var(--char-r1, -8deg));
+                text-shadow:
+                    calc(var(--char-gx, 3px) * -1) 0 #ff0040,
+                    var(--char-gx, 3px) 0 #00e5ff;
+                filter: contrast(1.4);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(var(--char-d3, 3px), var(--char-d4, -2px)) skewX(var(--char-r2, 6deg));
+                text-shadow:
+                    var(--char-gx, 3px) 0 #ff0040,
+                    calc(var(--char-gx, 3px) * -1) 0 #00e5ff;
+            }
+            45% {
+                opacity: 1;
+                transform: translate(var(--char-d5, -2px), 0) skewX(0deg);
+                text-shadow:
+                    calc(var(--char-gx, 3px) * -0.5) 0 #ff0040,
+                    calc(var(--char-gx, 3px) * 0.5) 0 #00e5ff;
+            }
+            70% {
+                opacity: 1;
+                transform: translate(0, 0) skewX(0deg);
+                text-shadow: none;
+                filter: contrast(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(0, 0);
+                text-shadow: none;
+            }
+        }
+        .char-animate.glitch {
+            animation: char-glitch var(--char-anim-duration) steps(5, end) forwards;
+        }
+
+        /* ── Ink blot: blob settle ─────────────────── */
+        @keyframes char-inkBlot {
+            0% {
+                opacity: 0;
+                filter: blur(var(--char-b1, 5px));
+                transform: scale(var(--char-s1, 1.8)) rotate(var(--char-r1, -8deg));
+            }
+            40% {
+                opacity: 0.85;
+                filter: blur(var(--char-b2, 2px));
+                transform: scale(var(--char-s2, 1.15)) rotate(var(--char-r2, 3deg));
+            }
+            75% {
+                opacity: 1;
+                filter: blur(0.5px);
+                transform: scale(0.97) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                filter: blur(0);
+                transform: scale(1) rotate(0deg);
+            }
+        }
+        .char-animate.inkBlot {
+            animation: char-inkBlot var(--char-anim-duration) cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+        }
+
+        /* ── Magnetic: arc into place from caret ───── */
+        @keyframes char-magnetic {
+            0% {
+                opacity: 0;
+                transform:
+                    translate(var(--char-d1, -24px), var(--char-d2, 18px))
+                    scale(var(--char-s1, 0.5))
+                    rotate(var(--char-r1, -25deg));
+            }
+            55% {
+                opacity: 1;
+                transform:
+                    translate(var(--char-d3, 4px), var(--char-d4, -6px))
+                    scale(var(--char-s2, 1.08))
+                    rotate(var(--char-r2, 8deg));
+            }
+            82% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+        }
+        .char-animate.magnetic {
+            animation: char-magnetic var(--char-anim-duration) cubic-bezier(0.18, 0.9, 0.2, 1.15) forwards;
+        }
+        /* ── XIRTAM rain: glyph trail from above ───── */
+
+        @keyframes char-xirtam {
+            0% {
+                opacity: 0;
+                color: #33ff66;
+                text-shadow: 0 0 8px #00ff55, 0 0 16px #00aa33;
+                transform: translateY(var(--char-d1, -28px)) scale(var(--char-s1, 1.15));
+                filter: brightness(1.6);
+            }
+            35% {
+                opacity: 1;
+                color: #66ff99;
+                text-shadow: 0 0 6px #00ff55;
+                transform: translateY(var(--char-d2, -8px)) scale(1);
+            }
+            70% {
+                opacity: 1;
+                color: inherit;
+                text-shadow: none;
+                transform: translateY(0) scale(1);
+                filter: brightness(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .char-animate.xirtam {
+            animation: char-xirtam var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        @keyframes char-xirtam-trail {
+            0% { opacity: 0.7; transform: translateY(0) scale(0.9); filter: blur(0); }
+            100% { opacity: 0; transform: translateY(var(--char-d1, 18px)) scale(0.7); filter: blur(2px); }
+        }
+        .char-animate.xirtam-trail {
+            color: #22cc55 !important;
+            text-shadow: 0 0 6px #00ff55;
+            animation: char-xirtam-trail calc(var(--char-anim-duration) * 0.85) linear forwards;
+        }
+
+        /* ── Shatter: multi-shard tumble ───────────── */
+        @keyframes char-shatter {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            15% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(0deg) scale(var(--char-s1, 1.08));
+                filter: brightness(1.4);
+            }
+            100% {
+                opacity: 0;
+                transform:
+                    translate(var(--char-dx, 20px), var(--char-dy, 30px))
+                    rotate(var(--char-r1, 40deg))
+                    scale(var(--char-s2, 0.7));
+                filter: brightness(0.8);
+            }
+        }
+        .char-animate.shatter {
+            animation: char-shatter var(--char-anim-duration) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+        }
+
+        /* ── Confetti: colorful flutter fall ───────── */
+        @keyframes char-confetti {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            25% {
+                opacity: 1;
+                transform:
+                    translate(calc(var(--char-dx, 10px) * 0.3), calc(var(--char-dy, 20px) * 0.15))
+                    rotate(calc(var(--char-r1, 90deg) * 0.3))
+                    scale(var(--char-s1, 1.15));
+            }
+            60% {
+                opacity: 0.9;
+                transform:
+                    translate(calc(var(--char-dx, 10px) * 0.75), calc(var(--char-dy, 20px) * 0.55))
+                    rotate(calc(var(--char-r1, 90deg) * 0.7))
+                    scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform:
+                    translate(var(--char-dx, 10px), var(--char-dy, 40px))
+                    rotate(var(--char-r2, 200deg))
+                    scale(var(--char-s2, 0.6));
+            }
+        }
+        .char-animate.confetti {
+            animation: char-confetti var(--char-anim-duration) cubic-bezier(0.25, 0.6, 0.35, 1) forwards;
+        }
+
+        /* ── Black hole: spiral into caret ─────────── */
+        @keyframes char-blackHole {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(0deg) scale(1);
+                filter: brightness(1);
+            }
+            40% {
+                opacity: 0.95;
+                transform:
+                    translate(calc(var(--char-dx, -12px) * 0.35), calc(var(--char-dy, 0px) * 0.35))
+                    rotate(var(--char-r1, 90deg))
+                    scale(0.75);
+                filter: brightness(1.2) contrast(1.15);
+            }
+            75% {
+                opacity: 0.55;
+                transform:
+                    translate(calc(var(--char-dx, -12px) * 0.8), calc(var(--char-dy, 0px) * 0.8))
+                    rotate(var(--char-r2, 220deg))
+                    scale(0.3);
+                filter: brightness(0.6) blur(0.5px);
+            }
+            100% {
+                opacity: 0;
+                transform:
+                    translate(var(--char-dx, -12px), var(--char-dy, 0px))
+                    rotate(var(--char-r3, 360deg))
+                    scale(0.02);
+                filter: brightness(0.2) blur(2px);
+            }
+        }
+        .char-animate.blackHole {
+            animation: char-blackHole var(--char-anim-duration) cubic-bezier(0.55, 0.05, 0.7, 0.2) forwards;
+        }
+
+        /* ── En masse: area burst over a deleted region ─ */
+        .area-burst {
+            position: absolute;
+            pointer-events: none;
+            z-index: 9999;
+            border: none;
+            border-radius: 50%;
+            will-change: transform, opacity;
+            background: radial-gradient(
+                circle at center,
+                rgba(var(--accent-rgb), 0.55) 0%,
+                rgba(var(--accent-rgb), 0.28) 28%,
+                rgba(var(--accent-rgb), 0.08) 55%,
+                transparent 72%
+            );
+            animation: area-burst 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes area-burst {
+            0% {
+                opacity: 0;
+                transform: scale(0.25);
+            }
+            15% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.55;
+                transform: scale(1.55);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(2.1);
+            }
+        }
+
+        /* ── Row glow on newline ─────────────────────── */
+        .row-glow {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99999;
+            border-radius: 4px;
+            will-change: opacity;
+            background: transparent;
+            box-shadow:
+                inset 0 0 14px rgba(255, 255, 255, 0.3),
+                0 0 20px rgba(255, 255, 255, 0.12);
+            animation: row-glow-fade 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes row-glow-fade {
+            0% { opacity: 0; }
+            15% { opacity: 1; }
+            40% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+
+        /* ── Status Bar ──────────────────────────────── */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 16px;
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 18px;
+            background: var(--bg-app);
+        }
+
+        /* ── Workspace Area ─────────────────────────── */
+        .workspace-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-app);
+            background-image:
+                radial-gradient(circle at 1px 1px, var(--border) 0.5px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        .workspace-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        /* ── Floating Window ─────────────────────────── */
+        .float-window {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            min-width: 320px;
+            min-height: 200px;
+        }
+
+        .float-window.focused {
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent);
+        }
+
+        .float-window.maximized {
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .float-window.minimized {
+            overflow: hidden;
+        }
+
+        /* ── Window Title Bar (drag handle) ─────────── */
+        .window-titlebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--bg-surface-alt);
+            border-bottom: 1px solid var(--border);
+            cursor: move;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .window-titlebar:hover {
+            background: var(--bg-elevated);
+        }
+
+        .window-titlebar .tab-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .window-titlebar .window-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 4px;
+            margin-left: auto;
+        }
+
+        .window-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            border: none;
+            background: transparent;
+            padding: 0;
+        }
+
+        .window-btn:hover {
+            background: rgba(128, 128, 128, 0.2);
+            color: var(--text);
+        }
+
+        .window-btn.close-btn:hover {
+            background: var(--danger) !important;
+            color: #fff !important;
+        }
+
+        /* ── Window Resize Handle ───────────────────── */
+        .float-window::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+        let _idCounter = 0;
+        const uid = () => ++_idCounter;
+
+        const randomColor = () =>
+            '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+
+        const createTab = (name, content = '') => ({
+            id: uid(),
+            name,
+            content,
+            text: '',
+            color: randomColor(),
+        });
+
+        // ═══════════════════════════════════════════════
+        //  QuillEditor
+        // ═══════════════════════════════════════════════
+        function QuillEditor({ delta, onContentChange, readOnly, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delOffset, delIntensity, rowGlowScope }) {
+            const containerRef = useRef(null);
+            const quillRef = useRef(null);
+            const onChangeRef = useRef(onContentChange);
+            onChangeRef.current = onContentChange;
+
+            useEffect(() => {
+                const container = containerRef.current;
+                const editorDiv = document.createElement('div');
+                container.appendChild(editorDiv);
+
+                const quill = new Quill(editorDiv, {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ header: [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ color: [] }, { background: [] }],
+                            [{ list: 'ordered' }, { list: 'bullet' }],
+                            ['blockquote', 'code-block'],
+                            ['link', 'image'],
+                            ['clean'],
+                        ],
+                    },
+                });
+
+                quillRef.current = quill;
+
+                const editorEl = quill.root;
+                const animDurationRef = { current: 200 };
+                const animEnabledRef = { current: true };
+                const animEffectRef = { current: 'flyIn' };
+                const flyInDirectionRef = { current: 'random' };
+                const animOffsetRef = { current: 18 };
+                const deleteEffectRef = { current: 'destroy' };
+                const intensityRef = { current: 1 };
+
+                // Destructive pipeline params (separate from generative)
+                const delDurationRef = { current: 200 };
+                const delOffsetRef = { current: 18 };
+                const delIntensityRef = { current: 1 };
+
+                const DESTRUCTIVE_EFFECTS = new Set(['destroy', 'evaporate', 'suck', 'debris', 'blackHole', 'confetti', 'shatter']);
+
+                // Cached editor styles (avoids getComputedStyle on every keystroke)
+                const cachedStyle = {
+                    theme: null,
+                    fontFamily: '',
+                    fontSize: '',
+                    lineHeight: '',
+                    color: '',
+                };
+                const ensureFreshStyle = () => {
+                    const theme = document.documentElement.getAttribute('data-theme');
+                    if (theme !== cachedStyle.theme || !cachedStyle.fontFamily) {
+                        cachedStyle.theme = theme;
+                        const cs = getComputedStyle(editorEl);
+                        cachedStyle.fontFamily = cs.fontFamily;
+                        cachedStyle.fontSize = cs.fontSize;
+                        cachedStyle.lineHeight = cs.lineHeight;
+                        cachedStyle.color = cs.color;
+                    }
+                };
+                ensureFreshStyle();
+
+                // Expose refs for parent to update
+                quill._charAnimDuration = animDurationRef;
+                quill._charAnimEnabled = animEnabledRef;
+                quill._charAnimEffect = animEffectRef;
+                quill._flyInDirection = flyInDirectionRef;
+                quill._charAnimOffset = animOffsetRef;
+                quill._charDeleteEffect = deleteEffectRef;
+                quill._charIntensity = intensityRef;
+                quill._delDuration = delDurationRef;
+                quill._delOffset = delOffsetRef;
+                quill._delIntensity = delIntensityRef;
+                // Row glow scope: 'line' (previous line only) or 'paragraph' (all consecutive non-empty lines above)
+                const rowGlowScopeRef = { current: 'paragraph' };
+                quill._rowGlowScope = rowGlowScopeRef;
+
+                const pickDirection = (dir) => {
+                    const angle = Math.random() * Math.PI * 2;
+                    if (dir === 'random') return { x: Math.cos(angle), y: Math.sin(angle) };
+                    const map = { top: {x:0,y:-1}, bottom: {x:0,y:1}, left: {x:-1,y:0}, right: {x:1,y:0}, diagonal: {x:-0.707,y:-0.707} };
+                    return map[dir] || map.top;
+                };
+
+                const activeOverlays = [];
+                const MAX_OVERLAYS = 5000;
+
+                const makeOverlay = (char, effect, extraClass, left, top, extraVars, durationMs) => {
+                    const overlay = document.createElement('span');
+                    overlay.className = `char-animate ${effect}${extraClass ? ' ' + extraClass : ''}`;
+                    overlay.textContent = char;
+                    const dur = durationMs != null ? durationMs : animDurationRef.current;
+                    overlay.style.cssText = `
+                        font-family: ${cachedStyle.fontFamily};
+                        font-size: ${cachedStyle.fontSize};
+                        line-height: ${cachedStyle.lineHeight};
+                        color: ${cachedStyle.color};
+                        left: ${left}px;
+                        top: ${top}px;
+                        ${extraVars || ''}
+                        --char-int: ${intensityRef.current};
+                        --char-anim-duration: ${dur}ms;
+                    `;
+
+                    if (activeOverlays.length >= MAX_OVERLAYS) {
+                        const oldest = activeOverlays.shift();
+                        if (oldest && oldest.parentNode) { oldest.style.willChange = 'auto'; oldest.remove(); }
+                    }
+                    activeOverlays.push(overlay);
+                    document.body.appendChild(overlay);
+
+                    const cleanup = () => {
+                        const i = activeOverlays.indexOf(overlay);
+                        if (i !== -1) activeOverlays.splice(i, 1);
+                        if (overlay.parentNode) { overlay.style.willChange = 'auto'; overlay.remove(); }
+                    };
+                    overlay.addEventListener('animationend', cleanup, { once: true });
+                    setTimeout(cleanup, dur + 80);
+                    return overlay;
+                };
+
+                // ── EFFECTS Registry: single source of truth for all animation effects ──
+                const EFFECTS = {
+                    flyIn: {
+                        type: 'typing',
+                        vars: (int, o) => {
+                            const offset = animOffsetRef.current;
+                            return `--char-anim-offset: ${(o.dir.y * offset * int).toFixed(1)}px; --char-anim-drift-x: ${(o.dir.x * offset * 1.2 * int).toFixed(1)}px; --char-anim-scale: ${(1 + 0.15 * int).toFixed(2)};`;
+                        },
+                    },
+                    digitize: { params: (int) => ({ b1:6*int, b2:3*int, b3:1*int, s1:1+0.3*int, s2:1+0.1*int, s3:1+0.02*int }) },
+                    pop: { params: (int) => ({ s1:1+0.18*int, s2:1-0.06*int }) },
+                    slam: { params: (int) => ({ d1:-30*int, d2:3*int, d3:-1*int, s1:1+0.2*int }) },
+                    spin: {
+                        type: 'typing',
+                        params: (int) => {
+                            const turns = Math.max(1, Math.round(1 + int));
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            return {
+                                s1: Math.max(0.2, 0.45 - 0.1 * int),
+                                s2: 1 + 0.14 * int,
+                                'spin-y0': dir * (90 + 40 * int),
+                                'spin-y1': -dir * (12 + 10 * int),
+                                'spin-z0': dir * turns * -360,
+                                'spin-z1': dir * (18 + 14 * int),
+                            };
+                        },
+                    },
+                    wave: { params: (int) => ({ d1:7*int, d2:-5*int, d3:2*int, d4:-1*int, s1:1-0.15*int, s2:1+0.05*int }) },
+                    typewriter: { params: (int) => ({ d1: -4 - 4 * int }) },
+                    glitch: {
+                        params: (int) => {
+                            const j = 2 + 4 * int;
+                            return {
+                                d1: (Math.random() < 0.5 ? -1 : 1) * j,
+                                d2: (Math.random() < 0.5 ? -1 : 1) * j * 0.6,
+                                d3: (Math.random() < 0.5 ? -1 : 1) * j * 0.8,
+                                d4: (Math.random() < 0.5 ? -1 : 1) * j * 0.5,
+                                d5: (Math.random() < 0.5 ? -1 : 1) * j * 0.4,
+                                r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 6 * int),
+                                r2: (Math.random() < 0.5 ? -1 : 1) * (4 + 5 * int),
+                                gx: 2 + 3 * int,
+                            };
+                        },
+                    },
+                    inkBlot: {
+                        params: (int) => ({
+                            b1: 4 + 4 * int,
+                            b2: 1.5 + 1.5 * int,
+                            s1: 1.4 + 0.5 * int,
+                            s2: 1.08 + 0.12 * int,
+                            r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 8 * int),
+                            r2: (Math.random() < 0.5 ? -1 : 1) * (2 + 4 * int),
+                        }),
+                    },
+                    magnetic: {
+                        params: (int, o) => {
+                            const side = o && o.side != null ? o.side : (Math.random() < 0.5 ? -1 : 1);
+                            const arc = (18 + 16 * int);
+                            return {
+                                d1: side * arc * (0.7 + Math.random() * 0.5),
+                                d2: arc * (0.4 + Math.random() * 0.6),
+                                d3: -side * (3 + 4 * int),
+                                d4: -(4 + 5 * int),
+                                s1: 0.4 + 0.1 * Math.random(),
+                                s2: 1.05 + 0.08 * int,
+                                r1: side * -(15 + 18 * int),
+                                r2: side * (6 + 8 * int),
+                            };
+                        },
+                    },
+                    xirtam: {
+                        params: (int) => ({
+                            d1: -(22 + 18 * int),
+                            d2: -(6 + 4 * int),
+                            s1: 1.05 + 0.15 * int,
+                        }),
+                    },
+                    destroy: {
+                        params: (int, o) => {
+                            const ang = o && typeof o.angle === 'number' ? o.angle : Math.random() * Math.PI * 2;
+                            const dist = (o && o.dist != null ? o.dist : (28 + Math.random() * 42)) * int;
+                            const spin = (120 + Math.random() * 220) * (Math.random() < 0.5 ? -1 : 1) * int;
+                            return {
+                                dx: Math.cos(ang) * dist,
+                                dy: Math.sin(ang) * dist - 8 * int,
+                                s1: 1 + 0.12 * int,
+                                s2: 1 + 0.28 * int,
+                                s3: 1 + 0.05 * int,
+                                s4: Math.max(0.25, 0.7 - 0.15 * int),
+                                r1: spin * 0.35,
+                                r2: spin,
+                            };
+                        },
+                    },
+                    debris: {
+                        params: (int, o) => {
+                            const ang = o && typeof o.angle === 'number' ? o.angle : Math.random() * Math.PI * 2;
+                            const power = o && o.power != null ? o.power : (0.55 + Math.random() * 0.9);
+                            const dist = (36 + Math.random() * 90) * power * int;
+                            const spin = (160 + Math.random() * 420) * (Math.random() < 0.5 ? -1 : 1) * power;
+                            const fall = (18 + Math.random() * 55) * int;
+                            return {
+                                dx: Math.cos(ang) * dist,
+                                dy: Math.sin(ang) * dist * 0.75 - 12 * power * int,
+                                fall,
+                                s1: 1 + 0.25 * power * int,
+                                s2: 0.85 + 0.2 * Math.random(),
+                                s3: 0.2 + 0.25 * Math.random(),
+                                r1: spin * 0.45,
+                                r2: spin,
+                            };
+                        },
+                    },
+                    evaporate: { params: (int) => ({ d1:-10*int, d2:-22*int, d3:-34*int, s1:1+0.05*int, s2:1+0.12*int, s3:1+0.2*int, b1:1*int, b2:2*int, b3:5*int }) },
+                    suck: { params: (int, o) => o && typeof o.dx === 'number' ? { d1:o.dx*0.7*int, d2:(o.dy||0)*0.7*int, d3:o.dx*int, d4:(o.dy||0)*int } : { d1:-8*int, d3:-12*int } },
+                    cut: { split: true, params: (int, o) => ({ d1:(o.dir||1)*8*int, d2:(o.dir||1)*28*int, r1:(o.dir||1)*6*int, r2:(o.dir||1)*16*int }) },
+                    shatter: {
+                        shards: true,
+                        params: (int, o) => {
+                            const ang = o && typeof o.angle === 'number' ? o.angle : Math.random() * Math.PI * 2;
+                            const dist = (22 + Math.random() * 38) * int * (o && o.power != null ? o.power : 1);
+                            const spin = (40 + Math.random() * 100) * (o && o.dir != null ? o.dir : (Math.random() < 0.5 ? -1 : 1));
+                            return {
+                                dx: Math.cos(ang) * dist,
+                                dy: Math.sin(ang) * dist + (10 + Math.random() * 24) * int,
+                                s1: 1 + 0.1 * int,
+                                s2: 0.55 + Math.random() * 0.3,
+                                r1: spin * int,
+                            };
+                        },
+                    },
+                    confetti: {
+                        params: (int, o) => {
+                            const ang = o && typeof o.angle === 'number' ? o.angle : (-Math.PI / 2 + (Math.random() - 0.5) * 1.8);
+                            const dist = (20 + Math.random() * 50) * int;
+                            const spin = (90 + Math.random() * 280) * (Math.random() < 0.5 ? -1 : 1);
+                            const colors = ['#ff5c8a', '#ffd166', '#06d6a0', '#4cc9f0', '#c77dff', '#ff9f1c', '#ef476f'];
+                            return {
+                                dx: Math.cos(ang) * dist * 0.7,
+                                dy: Math.abs(Math.sin(ang)) * dist + (28 + Math.random() * 40) * int,
+                                s1: 1.05 + 0.2 * int,
+                                s2: 0.45 + Math.random() * 0.25,
+                                r1: spin * 0.5,
+                                r2: spin,
+                                color: o && o.color ? o.color : colors[Math.floor(Math.random() * colors.length)],
+                            };
+                        },
+                    },
+                    blackHole: {
+                        params: (int, o) => {
+                            const dx = o && typeof o.dx === 'number' ? o.dx : -14;
+                            const dy = o && typeof o.dy === 'number' ? o.dy : 0;
+                            // Spiral offset mid-path (perpendicular kick)
+                            const len = Math.hypot(dx, dy) || 1;
+                            const perpX = -dy / len;
+                            const perpY = dx / len;
+                            const kick = (10 + 14 * int) * (Math.random() < 0.5 ? -1 : 1);
+                            const turns = 1 + Math.round(int);
+                            const dir = Math.random() < 0.5 ? -1 : 1;
+                            return {
+                                dx: dx + perpX * kick * 0.15,
+                                dy: dy + perpY * kick * 0.15,
+                                r1: dir * 90 * turns * 0.4,
+                                r2: dir * 220 * turns * 0.5,
+                                r3: dir * 360 * turns,
+                            };
+                        },
+                    },
+                };
+
+                // ── Convert effect params object to CSS custom properties string ──
+                const buildVars = (v) => {
+                    let css = '';
+                    for (const [k, val] of Object.entries(v)) {
+                        if (val == null || typeof val === 'boolean' || k === 'color') continue;
+                        let unit = '';
+                        if (k === 'dx' || k === 'dy' || k === 'fall' || k === 'gx' || k.startsWith('d') || k.startsWith('b')) unit = 'px';
+                        else if (k.startsWith('r') || k.startsWith('spin-')) unit = 'deg';
+                        const prec = (k.startsWith('s') && !k.startsWith('spin')) ? 3 : 1;
+                        css += `--char-${k}: ${typeof val === 'number' ? val.toFixed(prec) : val}${unit}; `;
+                    }
+                    return css.trim();
+                };
+
+                const spawnTypewriterBar = (left, top, width, height, durationMs) => {
+                    const bar = document.createElement('div');
+                    bar.className = 'char-typewriter-bar';
+                    const w = Math.max(8, width || 10);
+                    const textColor = cachedStyle.color || '#ccc';
+                    bar.style.cssText = `
+                        left: ${left}px;
+                        top: ${(parseFloat(top) + (height || 16) - 2).toFixed(1)}px;
+                        width: ${w}px;
+                        --char-anim-duration: ${durationMs}ms;
+                        background: ${textColor};
+                        box-shadow: 0 0 8px ${textColor};
+                    `;
+                    document.body.appendChild(bar);
+                    const cleanup = () => { if (bar.parentNode) bar.remove(); };
+                    bar.addEventListener('animationend', cleanup, { once: true });
+                    setTimeout(cleanup, durationMs + 60);
+                };
+
+                const spawnOverlay = (char, bounds, effect, opts) => {
+                    if (!bounds) return;
+                    ensureFreshStyle();
+                    const editorRect = editorEl.getBoundingClientRect();
+                    const left = (editorRect.left + bounds.left).toFixed(1);
+                    const top = (editorRect.top + bounds.top).toFixed(1);
+                    const isDestructive = DESTRUCTIVE_EFFECTS.has(effect);
+                    const int = isDestructive ? delIntensityRef.current : intensityRef.current;
+                    const dur = (opts && opts.durationMs) || (isDestructive ? delDurationRef.current : animDurationRef.current);
+                    const delay = opts && opts.delayMs ? opts.delayMs : 0;
+
+                    const run = (fn) => {
+                        if (delay > 0) setTimeout(fn, delay);
+                        else fn();
+                    };
+
+                    // ── Split effect: two clipped halves (cut) ──
+                    if (EFFECTS[effect]?.split) {
+                        const sliceAt = 44;
+                        run(() => {
+                            makeOverlay(char, 'cut', 'cut-half cut-top', left, top,
+                                buildVars(EFFECTS[effect].params(int, { dir: -1 })) + `height: ${bounds.height}px; clip-path: inset(0 0 ${sliceAt}% 0);`, dur);
+                            makeOverlay(char, 'cut', 'cut-half cut-bottom', left, top,
+                                buildVars(EFFECTS[effect].params(int, { dir: 1 })) + `height: ${bounds.height}px; clip-path: inset(${sliceAt}% 0 0 0);`, dur);
+                        });
+                        return;
+                    }
+
+                    // ── Shatter: 4 clipped shards tumble apart ──
+                    if (EFFECTS[effect]?.shards) {
+                        const clips = [
+                            { clip: 'inset(0 50% 50% 0)', ang: -2.4, dir: -1 },
+                            { clip: 'inset(0 0 50% 50%)', ang: -0.7, dir: 1 },
+                            { clip: 'inset(50% 50% 0 0)', ang: 2.6, dir: -1 },
+                            { clip: 'inset(50% 0 0 50%)', ang: 0.8, dir: 1 },
+                        ];
+                        run(() => {
+                            clips.forEach((c, i) => {
+                                const p = EFFECTS.shatter.params(int, {
+                                    angle: c.ang + (Math.random() - 0.5) * 0.5,
+                                    dir: c.dir,
+                                    power: 0.85 + Math.random() * 0.4,
+                                });
+                                makeOverlay(char, 'shatter', `shatter-shard s${i}`, left, top,
+                                    buildVars(p) + `height: ${bounds.height}px; clip-path: ${c.clip};`, dur);
+                            });
+                        });
+                        return;
+                    }
+
+                    // ── Compute CSS variables from registry ──
+                    let extraVars = '';
+                    let colorOverride = '';
+                    if (EFFECTS[effect]?.vars) {
+                        extraVars = EFFECTS[effect].vars(int, opts || {});
+                    } else if (EFFECTS[effect]?.params) {
+                        const p = EFFECTS[effect].params(int, opts);
+                        extraVars = buildVars(p);
+                        if (p.color) colorOverride = `color: ${p.color} !important;`;
+                    }
+
+                    run(() => {
+                        makeOverlay(char, effect, '', left, top, `${extraVars} ${colorOverride}`.trim(), dur);
+
+                        if (effect === 'typewriter') {
+                            spawnTypewriterBar(left, top, bounds.width, bounds.height, dur);
+                        }
+
+                        if (effect === 'xirtam') {
+                            // Fading trail glyphs above the landing spot
+                            const trailN = Math.min(3, 1 + Math.round(int));
+                            for (let t = 0; t < trailN; t++) {
+                                const trailTop = (parseFloat(top) - (t + 1) * (bounds.height * 0.85)).toFixed(1);
+                                const trailVars = `--char-d1: ${(10 + t * 8) * int}px; --char-anim-duration: ${Math.round(dur * (0.7 + t * 0.1))}ms; opacity: ${(0.55 - t * 0.12).toFixed(2)};`;
+                                setTimeout(() => {
+                                    makeOverlay(char, 'xirtam-trail', '', left, trailTop, trailVars, Math.round(dur * 0.85));
+                                }, t * 30);
+                            }
+                        }
+                    });
+                };
+
+                // Evenly sample indices across a range (includes ends when n > 1)
+                const sampleIndices = (length, maxN) => {
+                    if (length <= 0) return [];
+                    const n = Math.min(length, maxN);
+                    if (n === 1) return [0];
+                    const out = [];
+                    for (let i = 0; i < n; i++) {
+                        out.push(Math.round(i * (length - 1) / (n - 1)));
+                    }
+                    return out;
+                };
+
+                const collectChars = (index, length) => {
+                    const text = quill.getText();
+                    const chars = [];
+                    const rects = [];
+                    const MAX_SAMPLE = 500;
+                    const picks = sampleIndices(length, MAX_SAMPLE);
+                    let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
+                    for (const off of picks) {
+                        const b = quill.getBounds(index + off, 1);
+                        if (!b) continue;
+                        const ch = text[index + off];
+                        if (ch === '\n' || ch === '\r') continue;
+                        chars.push(ch);
+                        rects.push(b);
+                        minL = Math.min(minL, b.left);
+                        minT = Math.min(minT, b.top);
+                        maxR = Math.max(maxR, b.left + b.width);
+                        maxB = Math.max(maxB, b.top + b.height);
+                    }
+                    const area = (minL !== Infinity)
+                        ? { left: minL, top: minT, width: maxR - minL, height: maxB - minT, cx: (minL + maxR) / 2, cy: (minT + maxB) / 2 }
+                        : null;
+                    return { chars, rects, area };
+                };
+
+                // Radial blast angle from selection center + jitter (old-game debris scatter)
+                const blastVector = (rect, area, i, total) => {
+                    const cx = area ? area.cx : rect.left + rect.width / 2;
+                    const cy = area ? area.cy : rect.top + rect.height / 2;
+                    const px = rect.left + rect.width / 2;
+                    const py = rect.top + rect.height / 2;
+                    let ang = Math.atan2(py - cy, px - cx);
+                    if (!isFinite(ang) || (Math.abs(px - cx) < 0.5 && Math.abs(py - cy) < 0.5)) {
+                        ang = (i / Math.max(1, total)) * Math.PI * 2 + Math.random() * 0.35;
+                    } else {
+                        ang += (Math.random() - 0.5) * 0.85;
+                    }
+                    const distFromCenter = Math.hypot(px - cx, py - cy);
+                    const power = 0.45 + Math.min(1.2, distFromCenter / 80) + Math.random() * 0.55;
+                    return { angle: ang, power, dist: 40 + power * 70 + Math.random() * 40 };
+                };
+
+                // ── En masse: debris / shatter / confetti / black hole / etc ──
+                const spawnMassEffect = (chars, rects, area, effect) => {
+                    const MAX_MASS = 500;
+                    const picks = sampleIndices(chars.length, MAX_MASS);
+                    const baseDur = delDurationRef.current;
+                    const int = delIntensityRef.current;
+
+                    // Explode / suck mass-delete → debris scatter (building pieces flying out)
+                    const useDebris = effect === 'destroy' || effect === 'suck' || effect === 'debris';
+
+                    for (let pi = 0; pi < picks.length; pi++) {
+                        const i = picks[pi];
+                        const ch = chars[i];
+                        const r = rects[i];
+                        if (!ch || !r) continue;
+                        const stagger = Math.floor(pi * (10 + 6 * int) / Math.max(1, picks.length / 10));
+
+                        if (useDebris) {
+                            const blast = blastVector(r, area, pi, picks.length);
+                            spawnOverlay(ch, r, 'debris', {
+                                angle: blast.angle,
+                                power: blast.power,
+                                dist: blast.dist,
+                                delayMs: stagger,
+                                durationMs: Math.round(baseDur * (0.85 + Math.random() * 0.55 + 0.15 * int)),
+                            });
+                        } else if (effect === 'shatter') {
+                            const blast = blastVector(r, area, pi, picks.length);
+                            spawnOverlay(ch, r, 'shatter', {
+                                angle: blast.angle,
+                                power: blast.power,
+                                delayMs: Math.floor(stagger * 0.5),
+                                durationMs: Math.round(baseDur * (0.9 + Math.random() * 0.4)),
+                            });
+                        } else if (effect === 'confetti') {
+                            const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+                            spawnOverlay(ch, r, 'confetti', {
+                                angle: ang,
+                                delayMs: stagger,
+                                durationMs: Math.round(baseDur * (1.1 + Math.random() * 0.7)),
+                            });
+                        } else if (effect === 'blackHole') {
+                            const px = r.left + r.width / 2;
+                            const py = r.top + r.height / 2;
+                            const tx = area ? area.cx : px;
+                            const ty = area ? area.cy : py;
+                            spawnOverlay(ch, r, 'blackHole', {
+                                dx: (tx - px) * int,
+                                dy: (ty - py) * int,
+                                delayMs: Math.floor((Math.hypot(px - tx, py - ty) * 0.4) + stagger * 0.3),
+                                durationMs: Math.round(baseDur * (1 + Math.random() * 0.35)),
+                            });
+                        } else if (effect === 'evaporate') {
+                            const delayMs = Math.floor((r.top - (area ? area.top : r.top)) * 0.35);
+                            spawnOverlay(ch, r, 'evaporate', { delayMs });
+                        } else {
+                            spawnOverlay(ch, r, effect, { delayMs: stagger });
+                        }
+                    }
+
+                    // Red pulse flash only for explode / debris bursts
+                    if (effect !== 'destroy' && effect !== 'debris') return;
+                    if (!area || area.width <= 0 || area.height <= 0) return;
+                    ensureFreshStyle();
+                    const editorRect = editorEl.getBoundingClientRect();
+                    const burst = document.createElement('div');
+                    burst.className = 'area-burst';
+                    // Circular glow centered on selection mass (no rect outline)
+                    const size = Math.max(48, Math.max(area.width, area.height) * 1.15 + 28 * int);
+                    const cx = editorRect.left + (area.cx != null ? area.cx : area.left + area.width / 2);
+                    const cy = editorRect.top + (area.cy != null ? area.cy : area.top + area.height / 2);
+                    burst.style.cssText = `
+                        left: ${cx - size / 2}px;
+                        top: ${cy - size / 2}px;
+                        width: ${size}px;
+                        height: ${size}px;
+                    `;
+                    document.body.appendChild(burst);
+                    const cleanup = () => { if (burst.parentNode) burst.remove(); };
+                    burst.addEventListener('animationend', cleanup, { once: true });
+                    setTimeout(cleanup, 400);
+                };
+
+                container.addEventListener('keydown', e => {
+                    if (e.target !== editorEl && !editorEl.contains(e.target)) return;
+                    if (!animEnabledRef.current) return;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    if (e.isComposing) return;
+                    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key)) return;
+
+                    // ── Row glow on Enter — "settled in" effect ───────
+                    if (e.key === 'Enter') {
+                        const sel = quill.getSelection();
+                        if (!sel) return;
+                        ensureFreshStyle();
+                        const editorRect = editorEl.getBoundingClientRect();
+                        const text = quill.getText();
+
+                        // Find the line ABOVE cursor (the one just completed by pressing Enter)
+                        let prevLineStart = sel.index - 1;
+                        while (prevLineStart > 0 && text[prevLineStart - 1] !== '\n') prevLineStart--;
+                        // Scan forward to end of that line
+                        let len = 0;
+                        while (prevLineStart + len < text.length && text[prevLineStart + len] !== '\n') len++;
+
+                        if (len === 0) return; // empty previous line, nothing to glow
+
+                        // Build list of lines to glow (line or paragraph scope)
+                        const linesToGlow = [{ start: prevLineStart, len }];
+                        if (rowGlowScopeRef.current === 'paragraph') {
+                            // Walk upward gathering consecutive non-empty lines
+                            let aboveEnd = prevLineStart;
+                            while (aboveEnd > 0 && text[aboveEnd - 1] !== '\n') aboveEnd--;
+                            let aboveLen = prevLineStart - aboveEnd;
+                            if (aboveLen === 0) aboveEnd = 0; // first line
+                            else {
+                                // Keep walking up while lines are non-empty
+                                while (true) {
+                                    let walkStart = aboveEnd - 1;
+                                    while (walkStart > 0 && text[walkStart - 1] !== '\n') walkStart--;
+                                    let walkLen = aboveEnd - 1 - walkStart;
+                                    if (walkLen === 0 || text[walkStart + walkLen - 1] === ' ') break; // empty line boundary
+                                    linesToGlow.unshift({ start: walkStart, len: walkLen });
+                                    if (walkStart === 0) break; // reached document start
+                                    aboveEnd = walkStart;
+                                }
+                            }
+                        }
+
+                        // Compute envelope across ALL lines to glow (handles wrapping + paragraph)
+                        let envLeft = Infinity, envTop = Infinity, envRight = -Infinity, envBottom = -Infinity;
+                        for (const { start, len: l } of linesToGlow) {
+                            const step = Math.max(1, Math.floor(l / 20));
+                            for (let si = 0; si < l; si += step) {
+                                const cb = quill.getBounds(start + si, 1);
+                                if (!cb || text[start + si] === '\n') continue;
+                                envLeft = Math.min(envLeft, cb.left);
+                                envTop = Math.min(envTop, cb.top);
+                                envRight = Math.max(envRight, cb.left + cb.width);
+                                envBottom = Math.max(envBottom, cb.top + cb.height);
+                            }
+                        }
+
+                        if (envLeft === Infinity) return; // nothing to glow
+
+                        const glowWidth = envRight - envLeft;
+                        const glowHeight = envBottom - envTop + 4;
+                        const glow = document.createElement('div');
+                        glow.className = 'row-glow';
+                        glow.style.cssText = `
+                            left: ${(editorRect.left + envLeft).toFixed(1)}px;
+                            top: ${(editorRect.top + envTop - 2).toFixed(1)}px;
+                            width: ${glowWidth.toFixed(1)}px;
+                            height: ${glowHeight.toFixed(1)}px;
+                        `;
+                        document.body.appendChild(glow);
+                        const cleanup = () => { if (glow.parentNode) glow.remove(); };
+                        glow.addEventListener('animationend', cleanup, { once: true });
+                        setTimeout(cleanup, 700);
+
+                        return;
+                    }
+                    if (e.key === 'Tab') return;
+                    if (e.key === ' ') return;
+
+                    // ── Destruction: backspace / delete ─────
+                    if (e.key === 'Backspace' || e.key === 'Delete') {
+                        const sel = quill.getSelection();
+                        if (!sel) return;
+
+                        const text = quill.getText();
+
+                        // ── En masse: whole selection deleted ──
+                        if (sel.length > 0) {
+                            const { chars, rects, area } = collectChars(sel.index, sel.length);
+                            e.preventDefault();
+                            e.stopPropagation();
+                            spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                            quill.deleteText(sel.index, sel.length, 'user');
+                            quill.setSelection(sel.index, 0, 'silent');
+                            return;
+                        }
+
+                        const delPos = e.key === 'Backspace' ? sel.index - 1 : sel.index;
+                        if (delPos < 0 || delPos >= text.length) return;
+
+                        const char = text[delPos];
+                        if (char === '\n') return; // let native handle line breaks
+
+                        const bounds = quill.getBounds(delPos, 1);
+                        if (!bounds) return;
+
+                        const effect = deleteEffectRef.current;
+                        let opts = null;
+                        if (effect === 'suck' || effect === 'blackHole') {
+                            // Target: caret position after deletion (sel.index for both Backspace and Delete)
+                            const cb = quill.getBounds(sel.index, 0);
+                            if (cb) {
+                                const cx = bounds.left + bounds.width / 2;
+                                const cy = bounds.top + bounds.height / 2;
+                                opts = {
+                                    dx: (cb.left + (cb.width || 0) / 2) - cx,
+                                    dy: (cb.top + (cb.height || 0) / 2) - cy,
+                                };
+                            } else if (e.key === 'Delete') {
+                                opts = { dx: bounds.width * 1.5, dy: 0 };
+                            } else {
+                                opts = { dx: -bounds.width * 1.2, dy: 0 };
+                            }
+                        } else if (effect === 'destroy' || effect === 'shatter' || effect === 'confetti') {
+                            const ang = effect === 'confetti'
+                                ? (-Math.PI / 2 + (Math.random() - 0.5) * 1.6)
+                                : Math.random() * Math.PI * 2;
+                            opts = {
+                                angle: ang,
+                                dist: 32 + Math.random() * 48,
+                                power: 0.8 + Math.random() * 0.5,
+                            };
+                        }
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        quill.deleteText(delPos, 1, 'user');
+                        quill.setSelection(delPos, 0, 'silent');
+
+                        spawnOverlay(char, bounds, effect, opts);
+                        return;
+                    }
+
+                    // ── Typing ──────────────────────────────
+                    if (e.key.length > 1) return;
+
+                    const sel = quill.getSelection();
+                    if (!sel) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const char = e.key;
+                    const index = sel.index;
+
+                    if (sel.length > 0) {
+                        const { chars, rects, area } = collectChars(index, sel.length);
+                        spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                        quill.deleteText(index, sel.length, 'user');
+                    }
+                    quill.insertText(index, char, 'user');
+                    quill.setSelection(index + 1, 0, 'silent');
+
+                    const bounds = quill.getBounds(index, 1);
+                    spawnOverlay(char, bounds, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) });
+
+                    // Auto-scroll if caret near bottom of visible area
+                    requestAnimationFrame(() => {
+                        const sc = editorEl.closest('.ql-editor') || quill.root;
+                        const caretBounds = quill.getBounds(index + 1, 0);
+                        if (caretBounds) {
+                            const lineBottom = caretBounds.top + (caretBounds.height || 24);
+                            if (lineBottom > sc.scrollTop && lineBottom >= sc.scrollTop + sc.clientHeight * 0.5) {
+                                sc.scrollTop = Math.max(0, lineBottom - sc.clientHeight * 0.75);
+                            }
+                        }
+                    });
+                }, true);
+
+                // ── Paste: destroy old selection, animate new characters in ──
+                container.addEventListener('paste', e => {
+                    if (e.target !== editorEl && !editorEl.contains(e.target)) return;
+                    if (!animEnabledRef.current) return;
+                    const pasted = (e.clipboardData || window.clipboardData).getData('text/plain');
+                    if (!pasted) return;
+
+                    const sel = quill.getSelection();
+                    if (!sel) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Destroy selected text before replacing it
+                    if (sel.length > 0) {
+                        const { chars, rects, area } = collectChars(sel.index, sel.length);
+                        spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                        quill.deleteText(sel.index, sel.length, 'user');
+                    }
+
+                    quill.insertText(sel.index, pasted, 'user');
+
+                    // Animate new characters with typing effect
+                    const pasteLen = Math.min(pasted.length, 60);
+                    for (let i = 0; i < pasteLen; i++) {
+                        if (pasted[i] === '\n') continue;
+                        const b = quill.getBounds(sel.index + i, 1);
+                        if (!b) continue;
+                        spawnOverlay(pasted[i], b, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) });
+                    }
+
+                    quill.setSelection(sel.index + pasted.length, 0, 'silent');
+
+                    // Auto-scroll for paste
+                    requestAnimationFrame(() => {
+                        const sc = editorEl.closest('.ql-editor') || quill.root;
+                        const endIdx = sel.index + pasted.length - (pasted[pasted.length - 1] === '\n' ? 0 : 1);
+                        const caretBounds = quill.getBounds(endIdx, 0);
+                        if (caretBounds) {
+                            const lineBottom = caretBounds.top + (caretBounds.height || 24);
+                            if (lineBottom > sc.scrollTop && lineBottom >= sc.scrollTop + sc.clientHeight * 0.5) {
+                                sc.scrollTop = Math.max(0, lineBottom - sc.clientHeight * 0.75);
+                            }
+                        }
+                    });
+                }, true);
+
+                quill.on('text-change', () => {
+                    const ops = quill.getContents().ops || [];
+                    const text = quill.getText();
+                    if (onChangeRef.current) onChangeRef.current(ops, text);
+                });
+
+                return () => {
+                    quillRef.current = null;
+                    container.innerHTML = '';
+                };
+            }, []);
+
+            // Sync animation settings from parent
+            useEffect(() => {
+                const quill = quillRef.current;
+                if (quill?._charAnimDuration) quill._charAnimDuration.current = animDuration;
+                if (quill?._charAnimEnabled) quill._charAnimEnabled.current = animEnabled;
+                if (quill?._charAnimEffect) quill._charAnimEffect.current = animEffect;
+                if (quill?._flyInDirection) quill._flyInDirection.current = flyInDirection;
+                if (quill?._charAnimOffset) quill._charAnimOffset.current = animOffset;
+                if (quill?._charDeleteEffect) quill._charDeleteEffect.current = deleteEffect;
+                if (quill?._charIntensity) quill._charIntensity.current = intensity;
+                if (quill?._delDuration) quill._delDuration.current = delDuration;
+                if (quill?._delOffset) quill._delOffset.current = delOffset;
+                if (quill?._delIntensity) quill._delIntensity.current = delIntensity;
+                if (quill?._rowGlowScope) quill._rowGlowScope.current = rowGlowScope;
+            }, [animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delOffset, delIntensity, rowGlowScope]);
+
+            useEffect(() => {
+                const quill = quillRef.current;
+                if (!quill) return;
+                quill.enable(!readOnly);
+                if (delta) {
+                    const current = quill.getContents();
+                    if (JSON.stringify(current.ops) !== JSON.stringify(delta)) {
+                        quill.setContents(delta, 'silent');
+                    }
+                } else {
+                    quill.setText('', 'silent');
+                }
+            }, [delta, readOnly]);
+
+            return <div ref={containerRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} />;
+        }
+
+        // ═══════════════════════════════════════════════
+        //  TabBar
+        // ═══════════════════════════════════════════════
+        function TabBar({ tabs, activeId, onSelect, onClose, onAdd }) {
+            return (
+                <div className="tab-bar">
+                    {tabs.map(tab => (
+                        <div
+                            key={tab.id}
+                            className={'tab' + (tab.id === activeId ? ' active' : '')}
+                            onClick={() => onSelect(tab.id)}
+                        >
+                            <div className="tab-dot" style={{ background: tab.color }} />
+                            <span>{tab.name}</span>
+                            <div
+                                className="tab-close"
+                                onClick={e => { e.stopPropagation(); onClose(tab.id); }}
+                            >
+                                &times;
+                            </div>
+                        </div>
+                    ))}
+                    <div className="tab" onClick={onAdd} style={{ opacity: 0.6 }}>
+                        <span>+</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // ═══════════════════════════════════════════════
+        //  FloatWindow — draggable, resizable editor window
+        // ═══════════════════════════════════════════════
+        function FloatWindow({ tab, x, y, w, h, minimized, maximized, focused, zIndex, onFocus, onMinimize, onMaximize, onClose, onDrag, onResize, onContentChange, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delOffset, delIntensity, rowGlowScope }) {
+            const titlebarRef = useRef(null);
+            const windowRef = useRef(null);
+
+            // Drag handler — direct DOM manipulation for smooth movement
+            const onStartDrag = useCallback(e => {
+                if (maximized) return;
+                e.preventDefault();
+                e.stopPropagation();
+                onFocus();
+                const el = windowRef.current;
+                if (!el) return;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                document.body.style.userSelect = 'none';
+
+                const onMouseMove = ev => {
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    el.style.transform = `translate(${dx}px, ${dy}px)`;
+                };
+                const onMouseUp = ev => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    document.body.style.userSelect = '';
+                    // Commit final offset to state (absolute from original)
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    el.style.transform = '';
+                    onDrag(dx, dy);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }, [maximized, onFocus, onDrag]);
+
+            // Resize handler — direct DOM manipulation for smooth resizing
+            const onStartResize = useCallback(e => {
+                if (maximized) return;
+                e.preventDefault();
+                e.stopPropagation();
+                onFocus();
+                const el = windowRef.current;
+                if (!el) return;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startW = el.offsetWidth;
+                const startH = el.offsetHeight;
+                document.body.style.cursor = 'nwse-resize';
+                document.body.style.userSelect = 'none';
+
+                const onMouseMove = ev => {
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    el.style.width = Math.max(320, startW + dx) + 'px';
+                    el.style.height = Math.max(200, startH + dy) + 'px';
+                };
+                const onMouseUp = ev => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+                    el.style.width = '';
+                    el.style.height = '';
+                    onResize(dx, dy);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }, [maximized, onFocus, onResize]);
+
+            const className = ['float-window'];
+            if (focused) className.push('focused');
+            if (maximized) className.push('maximized');
+            if (minimized) className.push('minimized');
+
+            const style = maximized
+                ? { position: 'absolute', inset: 0, zIndex }
+                : { left: typeof x === 'number' ? x + 'px' : x, top: typeof y === 'number' ? y + 'px' : y, width: w, height: h, zIndex };
+
+            return (
+                <div
+                    ref={windowRef}
+                    className={className.join(' ')}
+                    style={style}
+                    onMouseDown={onFocus}
+                >
+                    {/* Title bar / drag handle */}
+                    <div
+                        ref={titlebarRef}
+                        className="window-titlebar"
+                        onMouseDown={onStartDrag}
+                    >
+                        <div className="tab-dot" style={{ background: tab.color }} />
+                        <span className="window-title">{tab.name}</span>
+                        <div className="window-controls">
+                            <button className="window-btn" onClick={onMinimize} title={minimized ? 'Restore' : 'Minimize'}>
+                                {minimized ? '□' : '—'}
+                            </button>
+                            <button className="window-btn" onClick={onMaximize} title={maximized ? 'Restore' : 'Maximize'}>
+                                {maximized ? '⊡' : '☐'}
+                            </button>
+                            <button className="window-btn close-btn" onClick={onClose} title="Close">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Editor content (hidden when minimized) */}
+                    {!minimized && (
+                        <div className="editor-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <QuillEditor
+                                key={tab.id}
+                                delta={tab.content}
+                                onContentChange={(ops, text) => onContentChange(tab.id, ops, text)}
+                                animDuration={animDuration}
+                                animEnabled={animEnabled}
+                                animEffect={animEffect}
+                                flyInDirection={flyInDirection}
+                                animOffset={animOffset}
+                                deleteEffect={deleteEffect}
+                                intensity={intensity}
+                                delDuration={delDuration}
+                                delOffset={delOffset}
+                                delIntensity={delIntensity}
+                                rowGlowScope={rowGlowScope}
+                            />
+                        </div>
+                    )}
+
+                    {/* Resize handle */}
+                    {!maximized && (
+                        <div
+                            className="resize-handle"
+                            style={{
+                                position: 'absolute', bottom: 0, right: 0, width: 16, height: 16,
+                                cursor: 'nwse-resize', zIndex: 1,
+                            }}
+                            onMouseDown={onStartResize}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // ═══════════════════════════════════════════════
+        //  App
+        // ═══════════════════════════════════════════════
+        function App() {
+            const firstTabRef = useRef(createTab('Untitled'));
+            const [tabs, setTabs] = useState(() => [firstTabRef.current]);
+            const [activeId, setActiveId] = useState(() => firstTabRef.current.id);
+            const [fileName, setFileName] = useState('Untitled');
+            const [fileExt, setFileExt] = useState('.txt');
+            const [isDark, setIsDark] = useState(true);
+            const [animDuration, setAnimDuration] = useState(200);
+            const [animOffset, setAnimOffset] = useState(18);
+            const [animEnabled, setAnimEnabled] = useState(true);
+            const [animEffect, setAnimEffect] = useState('flyIn');
+            const [flyInDirection, setFlyInDirection] = useState('random');
+            const [deleteEffect, setDeleteEffect] = useState('destroy');
+            const [intensity, setIntensity] = useState(1);
+            const [delDuration, setDelDuration] = useState(200);
+            const [delOffset, setDelOffset] = useState(18);
+            const [delIntensity, setDelIntensity] = useState(1);
+            const [rowGlowScope, setRowGlowScope] = useState('paragraph');
+
+            // Floating windows state (positions and sizes in pixels)
+            const workspaceRef = useRef(null);
+            const [windows, setWindows] = useState(() => {
+                const id = firstTabRef.current.id;
+                return [{ tabId: id, x: 60, y: 30, w: 720, h: 480, minimized: false, maximized: false }];
+            });
+            const [nextZIndex, setNextZIndex] = useState(10);
+
+            // Compute default window position (centered with offset)
+            const getWindowDefaultPos = useCallback(() => {
+                const count = windows.length;
+                const offsetX = 40 + (count % 5) * 30;
+                const offsetY = 20 + (count % 5) * 30;
+                return { x: offsetX, y: offsetY };
+            }, [windows]);
+
+            // Focus a window by tabId (bring to front, restore if minimized)
+            const focusWindow = useCallback((tabId, e) => {
+                if (e && e.stopPropagation) e.stopPropagation();
+                setWindows(prev => prev.map(w =>
+                    w.tabId === tabId ? { ...w, minimized: false } : w
+                ));
+                setActiveId(tabId);
+                setNextZIndex(z => z + 1);
+            }, []);
+
+            useEffect(() => {
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            }, [isDark]);
+
+            // Sync animation CSS variables
+            useEffect(() => {
+                const root = document.documentElement;
+                root.style.setProperty('--char-anim-duration', animDuration + 'ms');
+                root.style.setProperty('--char-anim-offset', -animOffset + 'px');
+                root.style.setProperty('--char-anim-scale', (1 + animOffset / 20).toFixed(2));
+            }, [animDuration, animOffset]);
+
+            // Total word count across all tabs
+            const totalWords = useMemo(() => {
+                return tabs.reduce((sum, t) => {
+                    const w = t.text && t.text.trim() ? t.text.trim().split(/\s+/).length : 0;
+                    return sum + w;
+                }, 0);
+            }, [tabs]);
+
+            // ── Tab actions ────────────────────────────
+            const handleSelect = useCallback(id => {
+                setActiveId(id);
+                const tab = tabs.find(t => t.id === id);
+                if (tab) {
+                    setFileName(tab.name.replace(/\.[^.]+$/, ''));
+                    const ext = tab.name.match(/\.[^.]+$/);
+                    setFileExt(ext ? ext[0] : '.txt');
+                }
+                focusWindow(id);
+            }, [tabs, focusWindow]);
+
+            const handleClose = useCallback(id => {
+                setWindows(prev => prev.filter(w => w.tabId !== id));
+                setTabs(prev => {
+                    if (prev.length <= 1) return prev;
+                    const idx = prev.findIndex(t => t.id === id);
+                    const next = prev.filter(t => t.id !== id);
+                    if (id === activeId) {
+                        const newActive = next[Math.min(idx, next.length - 1)];
+                        setActiveId(newActive.id);
+                        setFileName(newActive.name.replace(/\.[^.]+$/, ''));
+                    }
+                    return next;
+                });
+            }, [activeId]);
+
+            const handleAdd = useCallback(() => {
+                const tab = createTab('Untitled');
+                setTabs(prev => [...prev, tab]);
+                setActiveId(tab.id);
+                setFileName('Untitled');
+                setFileExt('.txt');
+                const pos = getWindowDefaultPos();
+                setWindows(prev => [...prev, {
+                    tabId: tab.id,
+                    x: pos.x, y: pos.y, w: 650, h: 450,
+                    minimized: false, maximized: false,
+                }]);
+                setNextZIndex(z => z + 1);
+            }, [getWindowDefaultPos]);
+
+            // ── Window actions ───────────────────────
+            const toggleMinimize = useCallback((tabId, e) => {
+                if (e) e.stopPropagation();
+                setWindows(prev => prev.map(w =>
+                    w.tabId === tabId ? { ...w, minimized: !w.minimized } : w
+                ));
+            }, []);
+
+            const toggleMaximize = useCallback((tabId, e) => {
+                if (e) e.stopPropagation();
+                setWindows(prev => prev.map(w =>
+                    w.tabId === tabId ? { ...w, maximized: !w.maximized } : w
+                ));
+            }, []);
+
+            const closeWindow = useCallback((tabId, e) => {
+                if (e) e.stopPropagation();
+                handleClose(tabId);
+            }, [handleClose]);
+
+            // Save restored position when un-maximizing
+
+            // ── Content change ─────────────────────────
+            const handleContentChange = useCallback((tabId, ops, text) => {
+                setTabs(prev => prev.map(t =>
+                    t.id === tabId ? { ...t, content: ops, text } : t
+                ));
+            }, []);
+
+            // ── File operations ────────────────────────
+            const saveFile = useCallback(() => {
+                const tab = tabs.find(t => t.id === activeId);
+                if (!tab) return;
+                const name = fileName + fileExt;
+                const text = tab.text || '';
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                a.click();
+                setTabs(prev => prev.map(t =>
+                    t.id === activeId ? { ...t, name } : t
+                ));
+            }, [tabs, activeId, fileName, fileExt]);
+
+            const openFile = useCallback(() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.txt,.js,.html,.css,.json,.md,.py,.ts,.jsx,.tsx';
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                        const tab = createTab(file.name, '');
+                        tab.text = ev.target.result;
+                        setTabs(prev => [...prev, tab]);
+                        setActiveId(tab.id);
+                        setWindows(prev => {
+                            const count = prev.length;
+                            return [...prev, {
+                                tabId: tab.id,
+                                x: 40 + (count % 5) * 30, y: 20 + (count % 5) * 30,
+                                w: 650, h: 450, minimized: false, maximized: false,
+                            }];
+                        });
+                        setFileName(file.name.replace(/\.[^.]+$/, ''));
+                        const ext = file.name.match(/\.[^.]+$/);
+                        setFileExt(ext ? ext[0] : '.txt');
+                    };
+                    reader.onerror = () => console.error(`Failed to read file: ${file.name}`);
+                    reader.readAsText(file);
+                };
+                input.click();
+            }, []);
+
+            const renameTab = useCallback(() => {
+                const name = fileName + fileExt;
+                setTabs(prev => prev.map(t =>
+                    t.id === activeId ? { ...t, name } : t
+                ));
+            }, [activeId, fileName, fileExt]);
+
+            // ── Keyboard shortcuts ─────────────────────
+            useEffect(() => {
+                const handler = e => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'o') { e.preventDefault(); openFile(); }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); handleAdd(); }
+                };
+                window.addEventListener('keydown', handler);
+                return () => window.removeEventListener('keydown', handler);
+            }, [saveFile, openFile, handleAdd]);
+
+            return (
+                <>
+                    <TabBar
+                        tabs={tabs}
+                        activeId={activeId}
+                        onSelect={handleSelect}
+                        onClose={handleClose}
+                        onAdd={handleAdd}
+                    />
+
+                    <div className="toolbar">
+                        {/* Row 1: File ops, Window */}
+                        <div className="toolbar-row">
+                            <div className="toolbar-group">
+                                <button onClick={handleAdd}>New</button>
+                                <button onClick={openFile}>Open</button>
+                                <button className="primary" onClick={saveFile}>Save</button>
+                            </div>
+                            <div className="toolbar-sep" />
+                            <div className="toolbar-group">
+                                <input
+                                    type="text"
+                                    value={fileName}
+                                    onChange={e => setFileName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && renameTab()}
+                                    placeholder="File name"
+                                />
+                                <select value={fileExt} onChange={e => setFileExt(e.target.value)}>
+                                    <option value=".txt">.txt</option>
+                                    <option value=".js">.js</option>
+                                    <option value=".html">.html</option>
+                                    <option value=".css">.css</option>
+                                    <option value=".json">.json</option>
+                                    <option value=".md">.md</option>
+                                    <option value=".py">.py</option>
+                                </select>
+                                <button onClick={renameTab}>Rename</button>
+                            </div>
+                            <div className="toolbar-sep" />
+                            <div className="toolbar-group">
+                                <button onClick={() => {
+                                    const existing = windows.find(w => w.tabId === activeId);
+                                    if (existing) return;
+                                    setWindows(prev => [...prev, {
+                                        tabId: activeId,
+                                        x: 40 + (prev.length % 5) * 30, y: 20 + (prev.length % 5) * 30,
+                                        w: 650, h: 450, minimized: false, maximized: false,
+                                    }]);
+                                }} title="Open active tab in new window">
+                                    Window
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Row 2: FX toggle, Effect type, Direction */}
+                        <div className="toolbar-row">
+                            <div className="toolbar-group">
+                                <button
+                                    onClick={() => setAnimEnabled(e => !e)}
+                                    style={{
+                                        background: animEnabled ? 'var(--accent)' : 'var(--bg-surface-alt)',
+                                        color: animEnabled ? '#fff' : 'var(--text-muted)',
+                                        fontWeight: 600,
+                                    }}
+                                    title="Toggle letter animation"
+                                >
+                                    {animEnabled ? 'FX ON' : 'FX OFF'}
+                                </button>
+                            </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Effect</label>
+                                <select
+                                    value={animEffect}
+                                    onChange={e => setAnimEffect(e.target.value)}
+                                    disabled={!animEnabled}
+                                    style={{fontSize: '12px', background: 'var(--bg-surface-alt)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 4px'}}
+                                >
+                                    <option value="flyIn">Fly In</option>
+                                    <option value="digitize">Digitize</option>
+                                    <option value="pop">Pop</option>
+                                    <option value="slam">Slam</option>
+                                    <option value="spin">Spin</option>
+                                    <option value="wave">Wave</option>
+                                    <option value="typewriter">Typewriter</option>
+                                    <option value="glitch">Glitch</option>
+                                    <option value="inkBlot">Ink Blot</option>
+                                    <option value="magnetic">Magnetic</option>
+                                    <option value="xirtam">XIRTAM</option>
+                                </select>
+                            </div>
+                            {animEffect === 'flyIn' && (
+                                <div className="toolbar-group">
+                                    <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Direction</label>
+                                    <select
+                                        value={flyInDirection}
+                                        onChange={e => setFlyInDirection(e.target.value)}
+                                        disabled={!animEnabled}
+                                        style={{fontSize: '12px', background: 'var(--bg-surface-alt)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 4px'}}
+                                    >
+                                        <option value="random">Random</option>
+                                        <option value="top">Top</option>
+                                        <option value="bottom">Bottom</option>
+                                        <option value="left">Left</option>
+                                        <option value="right">Right</option>
+                                        <option value="diagonal">Diagonal</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Row 3: Generative settings */}
+                        <div className="toolbar-row">
+                            <label style={{fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Generative</label>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Speed</label>
+                                <input
+                                    type="number" min={50} max={10000} step={10}
+                                    value={animDuration}
+                                    onChange={e => setAnimDuration(Number(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '70px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '35px'}}>{animDuration}ms</span>
+                            </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Size</label>
+                                <input
+                                    type="number" min={0} max={1000} step={1}
+                                    value={animOffset}
+                                    onChange={e => setAnimOffset(Number(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '60px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '20px'}}>{animOffset}</span>
+                            </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Intensity</label>
+                                <input
+                                    type="number" min={0} max={10} step={0.05}
+                                    value={intensity.toFixed(2)}
+                                    onChange={e => setIntensity(parseFloat(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '65px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '35px'}}>{intensity.toFixed(2)}x</span>
+                            </div>
+                        </div>
+
+                        {/* Row 4: Delete FX selector */}
+                        <div className="toolbar-row">
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Delete FX</label>
+                                <select
+                                    value={deleteEffect}
+                                    onChange={e => setDeleteEffect(e.target.value)}
+                                    disabled={!animEnabled}
+                                    style={{fontSize: '12px', background: 'var(--bg-surface-alt)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', padding: '2px 4px'}}
+                                >
+                                    <option value="destroy">Explode</option>
+                                    <option value="evaporate">Evaporate</option>
+                                    <option value="suck">Suck</option>
+                                    <option value="cut">Slice</option>
+                                    <option value="shatter">Shatter</option>
+                                    <option value="confetti">Confetti</option>
+                                    <option value="blackHole">Black Hole</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Row 5: Destructive settings */}
+                        <div className="toolbar-row">
+                            <label style={{fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Destructive</label>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Speed</label>
+                                <input
+                                    type="number" min={50} max={10000} step={10}
+                                    value={delDuration}
+                                    onChange={e => setDelDuration(Number(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '70px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '35px'}}>{delDuration}ms</span>
+                            </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Size</label>
+                                <input
+                                    type="number" min={0} max={1000} step={1}
+                                    value={delOffset}
+                                    onChange={e => setDelOffset(Number(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '60px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '20px'}}>{delOffset}</span>
+                            </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Intensity</label>
+                                <input
+                                    type="number" min={0} max={10} step={0.05}
+                                    value={delIntensity.toFixed(2)}
+                                    onChange={e => setDelIntensity(parseFloat(e.target.value))}
+                                    disabled={!animEnabled}
+                                    style={{width: '65px'}}
+                                />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '35px'}}>{delIntensity.toFixed(2)}x</span>
+                            </div>
+                        </div>
+
+                        {/* Row 4: Misc controls */}
+                        <div className="toolbar-row">
+                            <div className="toolbar-group">
+                                <button onClick={() => setRowGlowScope(s => s === 'paragraph' ? 'line' : 'paragraph')} title={rowGlowScope === 'paragraph' ? 'Enter glows paragraph above' : 'Enter glows single line above'}>
+                                    {rowGlowScope === 'paragraph' ? '¶ Glow' : '▭ Glow'}
+                                </button>
+                            </div>
+                            <div className="toolbar-sep" />
+                            <div className="toolbar-group">
+                                <button onClick={() => setIsDark(d => !d)}>
+                                    {isDark ? 'Dark' : 'Light'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div ref={workspaceRef} className="workspace-area" onClick={() => {}}>
+                        {windows.length === 0 && (
+                            <div className="workspace-empty">No open documents &middot; Click New or Open to start</div>
+                        )}
+                        {windows.map(win => {
+                            const tab = tabs.find(t => t.id === win.tabId);
+                            if (!tab) return null;
+                            const isFocused = activeId === win.tabId;
+                            const zIdx = isFocused ? nextZIndex : 10;
+
+                            return (
+                                <FloatWindow
+                                    key={win.tabId}
+                                    tab={tab}
+                                    x={win.x} y={win.y} w={win.w} h={win.h}
+                                    minimized={win.minimized} maximized={win.maximized}
+                                    focused={isFocused}
+                                    zIndex={zIdx}
+                                    onFocus={() => focusWindow(win.tabId)}
+                                    onMinimize={() => toggleMinimize(win.tabId)}
+                                    onMaximize={() => toggleMaximize(win.tabId)}
+                                    onClose={() => closeWindow(win.tabId)}
+                                    onDrag={(dx, dy) => {
+                                        setWindows(prev => prev.map(w =>
+                                            w.tabId === win.tabId ? { ...w, x: w.x + dx, y: w.y + dy } : w
+                                        ));
+                                    }}
+                                    onResize={(dw, dh) => {
+                                        setWindows(prev => prev.map(w => {
+                                            if (w.tabId !== win.tabId) return w;
+                                            return { ...w, w: Math.max(320, w.w + dw), h: Math.max(200, w.h + dh) };
+                                        }));
+                                    }}
+                                    onContentChange={handleContentChange}
+                                    animDuration={animDuration}
+                                    animEnabled={animEnabled}
+                                    animEffect={animEffect}
+                                    flyInDirection={flyInDirection}
+                                    animOffset={animOffset}
+                                    deleteEffect={deleteEffect}
+                                    intensity={intensity}
+                                    delDuration={delDuration}
+                                    delOffset={delOffset}
+                                    delIntensity={delIntensity}
+                                    rowGlowScope={rowGlowScope}
+                                />
+                            );
+                        })}
+                    </div>
+
+                    <div className="status-bar">
+                        <span>{windows.length} window{windows.length > 1 ? 's' : ''} &middot; {tabs.length} tab{tabs.length > 1 ? 's' : ''}</span>
+                        <span>{totalWords} words total</span>
+                        <span>Ctrl+S save &middot; Ctrl+O open &middot; Ctrl+N new</span>
+                    </div>
+                </>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
