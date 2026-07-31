@@ -85,8 +85,7 @@ Known Issues / Caveats ⚠️
 
 Contributing & Ideas 💡
 
-- Want to add effects or fix bugs? PRs welcome — keep changes small and focused.
-- If you add heavy dependencies or a build system, include a clear README section explaining how to build and run.
+- No. 
 
 License & Disclaimer
 
