@@ -5,7 +5,7 @@ REACT Framework: https://react.dev/
 QUILJS Framework: https://quilljs.com/
 
 This version loads all required frameworks from the CDN provider directly. You can use local just fine for completely offline use if downloaded dependencies. Ask your friendly local AI agent to help you get set up.
-
+This has no relation to that other Godot project with apparently the same-ish goals and name. We race towards entropy!
 Can then invoke from a static folder from html with : 
 
 - babel.min.js
