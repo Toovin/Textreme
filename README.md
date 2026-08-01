@@ -1,3 +1,6 @@
+Two versions: 
+react-quil and react with quill cannibalized for hopefully more control. 
+
 # Textreme
 Musings - Primarily Python/HTML/JS
 
