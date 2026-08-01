@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>React + Quill Notepad</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+    <link href="lib/quill.snow.css" rel="stylesheet">
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -653,16 +653,6 @@
             animation: char-evaporate var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
-        /* ── Suck: pulled into the caret ───────────── */
-        @keyframes char-suck {
-            0% { opacity: 1; transform: translate(0, 0) scale(1); }
-            55% { opacity: 0.9; transform: translate(var(--char-d1, -8px), var(--char-d2, 0px)) scale(0.6); }
-            100% { opacity: 0; transform: translate(var(--char-d3, -12px), var(--char-d4, 0px)) scale(0.05); }
-        }
-        .char-animate.suck {
-            animation: char-suck var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-
         /* ── Cut: letter sliced into two halves ────── */
         @keyframes char-cut {
             0% { opacity: 1; transform: translateY(0) rotate(0); }
@@ -1149,10 +1139,10 @@
 <body>
     <div id="root"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+    <script src="lib/react.production.min.js"></script>
+    <script src="lib/react-dom.production.min.js"></script>
+    <script src="lib/babel.min.js"></script>
+    <script src="lib/quill.min.js"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
@@ -1216,7 +1206,7 @@
                 const delOffsetRef = { current: 18 };
                 const delIntensityRef = { current: 1 };
 
-                const DESTRUCTIVE_EFFECTS = new Set(['destroy', 'evaporate', 'suck', 'debris', 'blackHole', 'confetti', 'shatter']);
+                const DESTRUCTIVE_EFFECTS = new Set(['destroy', 'evaporate', 'debris', 'blackHole', 'confetti', 'shatter']);
 
                 // Cached editor styles (avoids getComputedStyle on every keystroke)
                 const cachedStyle = {
@@ -1224,6 +1214,8 @@
                     fontFamily: '',
                     fontSize: '',
                     lineHeight: '',
+                    fontWeight: '',
+                    fontStyle: '',
                     color: '',
                 };
                 const ensureFreshStyle = () => {
@@ -1234,10 +1226,75 @@
                         cachedStyle.fontFamily = cs.fontFamily;
                         cachedStyle.fontSize = cs.fontSize;
                         cachedStyle.lineHeight = cs.lineHeight;
+                        cachedStyle.fontWeight = cs.fontWeight;
+                        cachedStyle.fontStyle = cs.fontStyle;
                         cachedStyle.color = cs.color;
                     }
                 };
                 ensureFreshStyle();
+
+                const getCharStyleAt = (index) => {
+                    // Primary: use Quill's format API (public, stable) to detect block/inline styles
+                    try {
+                        const format = quill.getFormat(index, 1);
+                        const basePx = parseFloat(cachedStyle.fontSize);
+                        let fontSize = cachedStyle.fontSize;
+                        let fontWeight = cachedStyle.fontWeight || 'normal';
+                        let fontStyle = cachedStyle.fontStyle || 'normal';
+                        let fontFamily = cachedStyle.fontFamily;
+                        let lineHeight = cachedStyle.lineHeight;
+                        let color = cachedStyle.color;
+
+                        if (format.header) {
+                            const sizes = { 1: basePx * 2, 2: basePx * 1.5, 3: basePx * 1.25 };
+                            const px = sizes[format.header];
+                            if (px) fontSize = px + 'px';
+                            fontWeight = 'bold';
+                        }
+                        if (format['code-block']) {
+                            fontSize = '13px';
+                            fontFamily = "'Cascadia Code','Fira Code','Consolas',monospace";
+                            lineHeight = '1.5';
+                        }
+                        if (format.blockquote) fontStyle = 'italic';
+                        if (format.bold) fontWeight = 'bold';
+                        if (format.italic) fontStyle = 'italic';
+                        if (format.code) {
+                            fontSize = (basePx * 0.9) + 'px';
+                            fontFamily = "'Cascadia Code','Fira Code','Consolas',monospace";
+                        }
+
+                        // If any style differs from the cached default, return it
+                        if (fontSize !== cachedStyle.fontSize || fontWeight !== (cachedStyle.fontWeight || 'normal') || fontStyle !== (cachedStyle.fontStyle || 'normal') || fontFamily !== cachedStyle.fontFamily) {
+                            return { fontSize, fontFamily, lineHeight, fontWeight, fontStyle, color };
+                        }
+                    } catch {}
+
+                    // Secondary: try DOM-based approach via getLeaf
+                    try {
+                        const leafResult = quill.getLeaf(index);
+                        if (leafResult) {
+                            const leaf = leafResult[0];
+                            if (leaf && leaf.domNode) {
+                                let node = leaf.domNode;
+                                if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+                                if (node && node.nodeType === Node.ELEMENT_NODE) {
+                                    const cs = getComputedStyle(node);
+                                    return {
+                                        fontSize: cs.fontSize,
+                                        fontFamily: cs.fontFamily,
+                                        lineHeight: cs.lineHeight,
+                                        fontWeight: cs.fontWeight,
+                                        fontStyle: cs.fontStyle,
+                                        color: cs.color,
+                                    };
+                                }
+                            }
+                        }
+                    } catch {}
+
+                    return null;
+                };
 
                 // Expose refs for parent to update
                 quill._charAnimDuration = animDurationRef;
@@ -1264,16 +1321,19 @@
                 const activeOverlays = [];
                 const MAX_OVERLAYS = 5000;
 
-                const makeOverlay = (char, effect, extraClass, left, top, extraVars, durationMs) => {
+                const makeOverlay = (char, effect, extraClass, left, top, extraVars, durationMs, charStyle) => {
                     const overlay = document.createElement('span');
                     overlay.className = `char-animate ${effect}${extraClass ? ' ' + extraClass : ''}`;
                     overlay.textContent = char;
                     const dur = durationMs != null ? durationMs : animDurationRef.current;
+                    const sty = charStyle || cachedStyle;
                     overlay.style.cssText = `
-                        font-family: ${cachedStyle.fontFamily};
-                        font-size: ${cachedStyle.fontSize};
-                        line-height: ${cachedStyle.lineHeight};
-                        color: ${cachedStyle.color};
+                        font-family: ${sty.fontFamily};
+                        font-size: ${sty.fontSize};
+                        line-height: ${sty.lineHeight};
+                        font-weight: ${sty.fontWeight || 'normal'};
+                        font-style: ${sty.fontStyle || 'normal'};
+                        color: ${sty.color};
                         left: ${left}px;
                         top: ${top}px;
                         ${extraVars || ''}
@@ -1411,8 +1471,7 @@
                             };
                         },
                     },
-                    evaporate: { params: (int) => ({ d1:-10*int, d2:-22*int, d3:-34*int, s1:1+0.05*int, s2:1+0.12*int, s3:1+0.2*int, b1:1*int, b2:2*int, b3:5*int }) },
-                    suck: { params: (int, o) => o && typeof o.dx === 'number' ? { d1:o.dx*0.7*int, d2:(o.dy||0)*0.7*int, d3:o.dx*int, d4:(o.dy||0)*int } : { d1:-8*int, d3:-12*int } },
+                    evaporate: { params: (int) => ({ d1:-10*int, d2:-22*int, d3:-34*int, s1:1+0.05*int, s2:1+0.12*int, s3:1+0.2*int, b1:1*int, b2:2*int, b3:5*int })                     },
                     cut: { split: true, params: (int, o) => ({ d1:(o.dir||1)*8*int, d2:(o.dir||1)*28*int, r1:(o.dir||1)*6*int, r2:(o.dir||1)*16*int }) },
                     shatter: {
                         shards: true,
@@ -1482,11 +1541,11 @@
                     return css.trim();
                 };
 
-                const spawnTypewriterBar = (left, top, width, height, durationMs) => {
+                const spawnTypewriterBar = (left, top, width, height, durationMs, charStyle) => {
                     const bar = document.createElement('div');
                     bar.className = 'char-typewriter-bar';
                     const w = Math.max(8, width || 10);
-                    const textColor = cachedStyle.color || '#ccc';
+                    const textColor = (charStyle && charStyle.color) || cachedStyle.color || '#ccc';
                     bar.style.cssText = `
                         left: ${left}px;
                         top: ${(parseFloat(top) + (height || 16) - 2).toFixed(1)}px;
@@ -1501,7 +1560,7 @@
                     setTimeout(cleanup, durationMs + 60);
                 };
 
-                const spawnOverlay = (char, bounds, effect, opts) => {
+                const spawnOverlay = (char, bounds, effect, opts, charStyle) => {
                     if (!bounds) return;
                     ensureFreshStyle();
                     const editorRect = editorEl.getBoundingClientRect();
@@ -1522,9 +1581,9 @@
                         const sliceAt = 44;
                         run(() => {
                             makeOverlay(char, 'cut', 'cut-half cut-top', left, top,
-                                buildVars(EFFECTS[effect].params(int, { dir: -1 })) + `height: ${bounds.height}px; clip-path: inset(0 0 ${sliceAt}% 0);`, dur);
+                                buildVars(EFFECTS[effect].params(int, { dir: -1 })) + `height: ${bounds.height}px; clip-path: inset(0 0 ${sliceAt}% 0);`, dur, charStyle);
                             makeOverlay(char, 'cut', 'cut-half cut-bottom', left, top,
-                                buildVars(EFFECTS[effect].params(int, { dir: 1 })) + `height: ${bounds.height}px; clip-path: inset(${sliceAt}% 0 0 0);`, dur);
+                                buildVars(EFFECTS[effect].params(int, { dir: 1 })) + `height: ${bounds.height}px; clip-path: inset(${sliceAt}% 0 0 0);`, dur, charStyle);
                         });
                         return;
                     }
@@ -1545,7 +1604,7 @@
                                     power: 0.85 + Math.random() * 0.4,
                                 });
                                 makeOverlay(char, 'shatter', `shatter-shard s${i}`, left, top,
-                                    buildVars(p) + `height: ${bounds.height}px; clip-path: ${c.clip};`, dur);
+                                    buildVars(p) + `height: ${bounds.height}px; clip-path: ${c.clip};`, dur, charStyle);
                             });
                         });
                         return;
@@ -1563,10 +1622,10 @@
                     }
 
                     run(() => {
-                        makeOverlay(char, effect, '', left, top, `${extraVars} ${colorOverride}`.trim(), dur);
+                        makeOverlay(char, effect, '', left, top, `${extraVars} ${colorOverride}`.trim(), dur, charStyle);
 
                         if (effect === 'typewriter') {
-                            spawnTypewriterBar(left, top, bounds.width, bounds.height, dur);
+                            spawnTypewriterBar(left, top, bounds.width, bounds.height, dur, charStyle);
                         }
 
                         if (effect === 'xirtam') {
@@ -1576,7 +1635,7 @@
                                 const trailTop = (parseFloat(top) - (t + 1) * (bounds.height * 0.85)).toFixed(1);
                                 const trailVars = `--char-d1: ${(10 + t * 8) * int}px; --char-anim-duration: ${Math.round(dur * (0.7 + t * 0.1))}ms; opacity: ${(0.55 - t * 0.12).toFixed(2)};`;
                                 setTimeout(() => {
-                                    makeOverlay(char, 'xirtam-trail', '', left, trailTop, trailVars, Math.round(dur * 0.85));
+                                    makeOverlay(char, 'xirtam-trail', '', left, trailTop, trailVars, Math.round(dur * 0.85), charStyle);
                                 }, t * 30);
                             }
                         }
@@ -1599,6 +1658,7 @@
                     const text = quill.getText();
                     const chars = [];
                     const rects = [];
+                    const styles = [];
                     const MAX_SAMPLE = 500;
                     const picks = sampleIndices(length, MAX_SAMPLE);
                     let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
@@ -1609,6 +1669,7 @@
                         if (ch === '\n' || ch === '\r') continue;
                         chars.push(ch);
                         rects.push(b);
+                        styles.push(getCharStyleAt(index + off));
                         minL = Math.min(minL, b.left);
                         minT = Math.min(minT, b.top);
                         maxR = Math.max(maxR, b.left + b.width);
@@ -1617,7 +1678,7 @@
                     const area = (minL !== Infinity)
                         ? { left: minL, top: minT, width: maxR - minL, height: maxB - minT, cx: (minL + maxR) / 2, cy: (minT + maxB) / 2 }
                         : null;
-                    return { chars, rects, area };
+                    return { chars, rects, styles, area };
                 };
 
                 // Radial blast angle from selection center + jitter (old-game debris scatter)
@@ -1638,19 +1699,20 @@
                 };
 
                 // ── En masse: debris / shatter / confetti / black hole / etc ──
-                const spawnMassEffect = (chars, rects, area, effect) => {
+                const spawnMassEffect = (chars, rects, area, effect, charStyles) => {
                     const MAX_MASS = 500;
                     const picks = sampleIndices(chars.length, MAX_MASS);
                     const baseDur = delDurationRef.current;
                     const int = delIntensityRef.current;
 
-                    // Explode / suck mass-delete → debris scatter (building pieces flying out)
-                    const useDebris = effect === 'destroy' || effect === 'suck' || effect === 'debris';
+                    // Explode / mass-delete → debris scatter (building pieces flying out)
+                    const useDebris = effect === 'destroy' || effect === 'debris';
 
                     for (let pi = 0; pi < picks.length; pi++) {
                         const i = picks[pi];
                         const ch = chars[i];
                         const r = rects[i];
+                        const sty = charStyles ? charStyles[i] : null;
                         if (!ch || !r) continue;
                         const stagger = Math.floor(pi * (10 + 6 * int) / Math.max(1, picks.length / 10));
 
@@ -1662,7 +1724,7 @@
                                 dist: blast.dist,
                                 delayMs: stagger,
                                 durationMs: Math.round(baseDur * (0.85 + Math.random() * 0.55 + 0.15 * int)),
-                            });
+                            }, sty);
                         } else if (effect === 'shatter') {
                             const blast = blastVector(r, area, pi, picks.length);
                             spawnOverlay(ch, r, 'shatter', {
@@ -1670,14 +1732,14 @@
                                 power: blast.power,
                                 delayMs: Math.floor(stagger * 0.5),
                                 durationMs: Math.round(baseDur * (0.9 + Math.random() * 0.4)),
-                            });
+                            }, sty);
                         } else if (effect === 'confetti') {
                             const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
                             spawnOverlay(ch, r, 'confetti', {
                                 angle: ang,
                                 delayMs: stagger,
                                 durationMs: Math.round(baseDur * (1.1 + Math.random() * 0.7)),
-                            });
+                            }, sty);
                         } else if (effect === 'blackHole') {
                             const px = r.left + r.width / 2;
                             const py = r.top + r.height / 2;
@@ -1688,12 +1750,12 @@
                                 dy: (ty - py) * int,
                                 delayMs: Math.floor((Math.hypot(px - tx, py - ty) * 0.4) + stagger * 0.3),
                                 durationMs: Math.round(baseDur * (1 + Math.random() * 0.35)),
-                            });
+                            }, sty);
                         } else if (effect === 'evaporate') {
                             const delayMs = Math.floor((r.top - (area ? area.top : r.top)) * 0.35);
-                            spawnOverlay(ch, r, 'evaporate', { delayMs });
+                            spawnOverlay(ch, r, 'evaporate', { delayMs }, sty);
                         } else {
-                            spawnOverlay(ch, r, effect, { delayMs: stagger });
+                            spawnOverlay(ch, r, effect, { delayMs: stagger }, sty);
                         }
                     }
 
@@ -1811,10 +1873,10 @@
 
                         // ── En masse: whole selection deleted ──
                         if (sel.length > 0) {
-                            const { chars, rects, area } = collectChars(sel.index, sel.length);
+                            const { chars, rects, styles, area } = collectChars(sel.index, sel.length);
                             e.preventDefault();
                             e.stopPropagation();
-                            spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                            spawnMassEffect(chars, rects, area, deleteEffectRef.current, styles);
                             quill.deleteText(sel.index, sel.length, 'user');
                             quill.setSelection(sel.index, 0, 'silent');
                             return;
@@ -1829,9 +1891,11 @@
                         const bounds = quill.getBounds(delPos, 1);
                         if (!bounds) return;
 
+                        const charStyle = getCharStyleAt(delPos);
+
                         const effect = deleteEffectRef.current;
                         let opts = null;
-                        if (effect === 'suck' || effect === 'blackHole') {
+                        if (effect === 'blackHole') {
                             // Target: caret position after deletion (sel.index for both Backspace and Delete)
                             const cb = quill.getBounds(sel.index, 0);
                             if (cb) {
@@ -1863,7 +1927,7 @@
                         quill.deleteText(delPos, 1, 'user');
                         quill.setSelection(delPos, 0, 'silent');
 
-                        spawnOverlay(char, bounds, effect, opts);
+                        spawnOverlay(char, bounds, effect, opts, charStyle);
                         return;
                     }
 
@@ -1880,15 +1944,16 @@
                     const index = sel.index;
 
                     if (sel.length > 0) {
-                        const { chars, rects, area } = collectChars(index, sel.length);
-                        spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                        const { chars, rects, styles, area } = collectChars(index, sel.length);
+                        spawnMassEffect(chars, rects, area, deleteEffectRef.current, styles);
                         quill.deleteText(index, sel.length, 'user');
                     }
                     quill.insertText(index, char, 'user');
                     quill.setSelection(index + 1, 0, 'silent');
 
                     const bounds = quill.getBounds(index, 1);
-                    spawnOverlay(char, bounds, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) });
+                    const charStyle = getCharStyleAt(index);
+                    spawnOverlay(char, bounds, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) }, charStyle);
 
                     // Auto-scroll if caret near bottom of visible area
                     requestAnimationFrame(() => {
@@ -1918,8 +1983,8 @@
 
                     // Destroy selected text before replacing it
                     if (sel.length > 0) {
-                        const { chars, rects, area } = collectChars(sel.index, sel.length);
-                        spawnMassEffect(chars, rects, area, deleteEffectRef.current);
+                        const { chars, rects, styles, area } = collectChars(sel.index, sel.length);
+                        spawnMassEffect(chars, rects, area, deleteEffectRef.current, styles);
                         quill.deleteText(sel.index, sel.length, 'user');
                     }
 
@@ -1931,7 +1996,8 @@
                         if (pasted[i] === '\n') continue;
                         const b = quill.getBounds(sel.index + i, 1);
                         if (!b) continue;
-                        spawnOverlay(pasted[i], b, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) });
+                        const charStyle = getCharStyleAt(sel.index + i);
+                        spawnOverlay(pasted[i], b, animEffectRef.current, { dir: pickDirection(flyInDirectionRef.current) }, charStyle);
                     }
 
                     quill.setSelection(sel.index + pasted.length, 0, 'silent');
@@ -2536,7 +2602,6 @@
                                 >
                                     <option value="destroy">Explode</option>
                                     <option value="evaporate">Evaporate</option>
-                                    <option value="suck">Suck</option>
                                     <option value="cut">Slice</option>
                                     <option value="shatter">Shatter</option>
                                     <option value="confetti">Confetti</option>
