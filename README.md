@@ -81,7 +81,6 @@ Known Issues / Caveats ⚠️
 
 - Local file operations (load/save) are the most commonly reported failure point.
 - Performance may degrade with many open tabs / large documents.
-- Accessibility has not been thoroughly audited — use caution for production accessibility requirements.
 
 Contributing & Ideas 💡
 
