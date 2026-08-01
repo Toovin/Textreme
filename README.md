@@ -91,3 +91,9 @@ License & Disclaimer
 - Use this project for fun, experimentation, and learning. No warranty — use at your own risk.
 
 Enjoy! ✨
+
+Bonus section: Pictures! 
+<img width="864" height="796" alt="image" src="https://github.com/user-attachments/assets/0f937a7b-5c36-474c-a9bf-ac135af954ae" />
+<img width="799" height="773" alt="image" src="https://github.com/user-attachments/assets/165556d9-e0f2-4313-9643-5e32e3d48255" />
+<img width="795" height="774" alt="image" src="https://github.com/user-attachments/assets/cc9475e8-6533-4567-9b42-79d70a6ba43f" />
+
