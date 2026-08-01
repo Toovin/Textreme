@@ -397,7 +397,108 @@
             --char-anim-duration: 200ms;
             --char-anim-offset: -18px;
             --char-anim-scale: 1.4;
+            --reveal-at: 70%;
         }
+
+        /* ── Inline animated spans (inline with text flow) ─── */
+        .char-inline {
+            display: inline-block;
+            opacity: 0;
+            transform-origin: center center;
+            will-change: transform, opacity, filter;
+        }
+
+        @keyframes char-inline-flyIn {
+            0%   { opacity: 0; transform: translateY(var(--char-anim-offset)) translateX(var(--char-anim-drift-x, 0px)) scale(var(--char-anim-scale)); }
+            var(--reveal-at) { opacity: 1; }
+            80%  { opacity: 1; transform: translateY(-2px) translateX(0) scale(1); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-digitize {
+            0%   { opacity: 0; filter: blur(var(--char-b1, 6px)) contrast(2) brightness(2); transform: scale(var(--char-s1, 1.3)); }
+            var(--reveal-at) { opacity: 1; filter: blur(0) contrast(1) brightness(1); }
+            100% { opacity: 1; filter: none; transform: none; }
+        }
+
+        @keyframes char-inline-pop {
+            0%   { opacity: 0; transform: scale(0.2); }
+            var(--reveal-at) { opacity: 1; }
+            55%  { opacity: 1; transform: scale(var(--char-s1, 1.18)); }
+            78%  { opacity: 1; transform: scale(var(--char-s2, 0.94)); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-slam {
+            0%   { opacity: 0; transform: translateY(var(--char-d1, -30px)) scale(var(--char-s1, 1.2)); }
+            var(--reveal-at) { opacity: 1; }
+            55%  { opacity: 1; transform: translateY(var(--char-d2, 3px)) scale(1); }
+            75%  { opacity: 1; transform: translateY(var(--char-d3, -1px)) scale(1); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-spin {
+            0%   { opacity: 0; transform: perspective(420px) rotateY(var(--char-spin-y0, -100deg)) rotateZ(var(--char-spin-z0, -360deg)) scale(var(--char-s1, 0.35)); }
+            var(--reveal-at) { opacity: 1; }
+            82%  { opacity: 1; transform: perspective(420px) rotateY(0deg) rotateZ(0deg) scale(1); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-wave {
+            0%   { opacity: 0; transform: translateY(var(--char-d1, 7px)) scale(var(--char-s1, 0.85)); }
+            var(--reveal-at) { opacity: 1; }
+            30%  { opacity: 1; transform: translateY(var(--char-d2, -5px)) scale(var(--char-s2, 1.05)); }
+            55%  { opacity: 1; transform: translateY(var(--char-d3, 2px)) scale(1); }
+            80%  { opacity: 1; transform: translateY(var(--char-d4, -1px)) scale(1); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-typewriter {
+            0%   { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateX(var(--char-d1, -6px)); }
+            var(--reveal-at) { opacity: 1; clip-path: inset(0 0 0 0); }
+            55%  { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }
+            100% { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }
+        }
+
+        @keyframes char-inline-glitch {
+            0%   { opacity: 0; transform: translate(var(--char-d1, -4px), var(--char-d2, 2px)) skewX(var(--char-r1, -8deg)); text-shadow: calc(var(--char-gx, 3px) * -1) 0 #ff0040, var(--char-gx, 3px) 0 #00e5ff; filter: contrast(1.4); }
+            var(--reveal-at) { opacity: 1; text-shadow: none; filter: none; }
+            70%  { opacity: 1; transform: translate(0, 0) skewX(0deg); text-shadow: none; filter: contrast(1); }
+            100% { opacity: 1; transform: none; text-shadow: none; }
+        }
+
+        @keyframes char-inline-inkBlot {
+            0%   { opacity: 0; filter: blur(var(--char-b1, 5px)); transform: scale(var(--char-s1, 1.8)) rotate(var(--char-r1, -8deg)); }
+            var(--reveal-at) { opacity: 1; filter: none; }
+            75%  { opacity: 1; filter: blur(0.5px); transform: scale(0.97) rotate(0deg); }
+            100% { opacity: 1; filter: none; transform: none; }
+        }
+
+        @keyframes char-inline-magnetic {
+            0%   { opacity: 0; transform: translate(var(--char-d1, -24px), var(--char-d2, 18px)) scale(var(--char-s1, 0.5)) rotate(var(--char-r1, -25deg)); }
+            var(--reveal-at) { opacity: 1; }
+            82%  { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        @keyframes char-inline-xirtam {
+            0%   { opacity: 0; color: #33ff66; text-shadow: 0 0 8px #00ff55, 0 0 16px #00aa33; transform: translateY(var(--char-d1, -28px)) scale(var(--char-s1, 1.15)); filter: brightness(1.6); }
+            var(--reveal-at) { opacity: 1; color: inherit; text-shadow: none; filter: none; }
+            70%  { opacity: 1; color: inherit; text-shadow: none; transform: translateY(0) scale(1); filter: brightness(1); }
+            100% { opacity: 1; transform: none; }
+        }
+
+        .char-inline.flyIn    { animation: char-inline-flyIn var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .char-inline.digitize { animation: char-inline-digitize var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .char-inline.pop      { animation: char-inline-pop var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .char-inline.slam     { animation: char-inline-slam var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .char-inline.spin     { transform-style: preserve-3d; backface-visibility: visible; animation: char-inline-spin var(--char-anim-duration) cubic-bezier(0.2, 0.85, 0.25, 1) forwards; }
+        .char-inline.wave     { animation: char-inline-wave var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .char-inline.typewriter { animation: char-inline-typewriter var(--char-anim-duration) steps(6, end) forwards; }
+        .char-inline.glitch   { animation: char-inline-glitch var(--char-anim-duration) steps(5, end) forwards; }
+        .char-inline.inkBlot  { animation: char-inline-inkBlot var(--char-anim-duration) cubic-bezier(0.34, 1.2, 0.64, 1) forwards; }
+        .char-inline.magnetic { animation: char-inline-magnetic var(--char-anim-duration) cubic-bezier(0.18, 0.9, 0.2, 1.15) forwards; }
+        .char-inline.xirtam   { animation: char-inline-xirtam var(--char-anim-duration) cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
         /* ── Fly-in (top default) ──────────────────── */
         @keyframes char-flyIn {
@@ -1080,72 +1181,17 @@
         const DESTRUCTIVE_EFFECTS = new Set(['destroy', 'evaporate', 'debris', 'blackHole', 'confetti', 'shatter']);
 
         const EFFECTS = {
-            flyIn: {
-                vars: (int, o) => {
-                    const offset = 18;
-                    return `--char-anim-offset: ${(o.dir.y * offset * int).toFixed(1)}px; --char-anim-drift-x: ${(o.dir.x * offset * 1.2 * int).toFixed(1)}px; --char-anim-scale: ${(1 + 0.15 * int).toFixed(2)};`;
-                },
-            },
-            digitize: { params: (int) => ({ b1:6*int, b2:3*int, b3:1*int, s1:1+0.3*int, s2:1+0.1*int, s3:1+0.02*int }) },
-            pop: { params: (int) => ({ s1:1+0.18*int, s2:1-0.06*int }) },
-            slam: { params: (int) => ({ d1:-30*int, d2:3*int, d3:-1*int, s1:1+0.2*int }) },
-            spin: {
-                type: 'typing',
-                params: (int) => {
-                    const turns = Math.max(1, Math.round(1 + int));
-                    const dir = Math.random() < 0.5 ? -1 : 1;
-                    return {
-                        s1: Math.max(0.2, 0.45 - 0.1 * int),
-                        s2: 1 + 0.14 * int,
-                        'spin-y0': dir * (90 + 40 * int),
-                        'spin-y1': -dir * (12 + 10 * int),
-                        'spin-z0': dir * turns * -360,
-                        'spin-z1': dir * (18 + 14 * int),
-                    };
-                },
-            },
-            wave: { params: (int) => ({ d1:7*int, d2:-5*int, d3:2*int, d4:-1*int, s1:1-0.15*int, s2:1+0.05*int }) },
-            typewriter: { params: (int) => ({ d1: -4 - 4 * int }) },
-            glitch: {
-                params: (int) => {
-                    const j = 2 + 4 * int;
-                    return {
-                        d1: (Math.random() < 0.5 ? -1 : 1) * j,
-                        d2: (Math.random() < 0.5 ? -1 : 1) * j * 0.6,
-                        d3: (Math.random() < 0.5 ? -1 : 1) * j * 0.8,
-                        d4: (Math.random() < 0.5 ? -1 : 1) * j * 0.5,
-                        d5: (Math.random() < 0.5 ? -1 : 1) * j * 0.4,
-                        r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 6 * int),
-                        r2: (Math.random() < 0.5 ? -1 : 1) * (4 + 5 * int),
-                        gx: 2 + 3 * int,
-                    };
-                },
-            },
-            inkBlot: {
-                params: (int) => ({
-                    b1: 4 + 4 * int, b2: 1.5 + 1.5 * int,
-                    s1: 1.4 + 0.5 * int, s2: 1.08 + 0.12 * int,
-                    r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 8 * int),
-                    r2: (Math.random() < 0.5 ? -1 : 1) * (2 + 4 * int),
-                }),
-            },
-            magnetic: {
-                params: (int, o) => {
-                    const side = o && o.side != null ? o.side : (Math.random() < 0.5 ? -1 : 1);
-                    const arc = (18 + 16 * int);
-                    return {
-                        d1: side * arc * (0.7 + Math.random() * 0.5),
-                        d2: arc * (0.4 + Math.random() * 0.6),
-                        d3: -side * (3 + 4 * int),
-                        d4: -(4 + 5 * int),
-                        s1: 0.4 + 0.1 * Math.random(),
-                        s2: 1.05 + 0.08 * int,
-                        r1: side * -(15 + 18 * int),
-                        r2: side * (6 + 8 * int),
-                    };
-                },
-            },
-            xirtam: { params: (int) => ({ d1: -(22 + 18 * int), d2: -(6 + 4 * int), s1: 1.05 + 0.15 * int }) },
+            flyIn: { revealAt: 70, vars: (int, o) => { const offset = 18; return `--char-anim-offset: ${(o.dir.y * offset * int).toFixed(1)}px; --char-anim-drift-x: ${(o.dir.x * offset * 1.2 * int).toFixed(1)}px; --char-anim-scale: ${(1 + 0.15 * int).toFixed(2)};`; } },
+            digitize: { revealAt: 85, params: (int) => ({ b1:6*int, b2:3*int, b3:1*int, s1:1+0.3*int, s2:1+0.1*int, s3:1+0.02*int }) },
+            pop: { revealAt: 55, params: (int) => ({ s1:1+0.18*int, s2:1-0.06*int }) },
+            slam: { revealAt: 55, params: (int) => ({ d1:-30*int, d2:3*int, d3:-1*int, s1:1+0.2*int }) },
+            spin: { revealAt: 55, type: 'typing', params: (int) => { const turns = Math.max(1, Math.round(1 + int)); const dir = Math.random() < 0.5 ? -1 : 1; return { s1: Math.max(0.2, 0.45 - 0.1 * int), s2: 1 + 0.14 * int, 'spin-y0': dir * (90 + 40 * int), 'spin-y1': -dir * (12 + 10 * int), 'spin-z0': dir * turns * -360, 'spin-z1': dir * (18 + 14 * int) }; } },
+            wave: { revealAt: 30, params: (int) => ({ d1:7*int, d2:-5*int, d3:2*int, d4:-1*int, s1:1-0.15*int, s2:1+0.05*int }) },
+            typewriter: { revealAt: 55, params: (int) => ({ d1: -4 - 4 * int }) },
+            glitch: { revealAt: 20, params: (int) => { const j = 2 + 4 * int; return { d1: (Math.random() < 0.5 ? -1 : 1) * j, d2: (Math.random() < 0.5 ? -1 : 1) * j * 0.6, d3: (Math.random() < 0.5 ? -1 : 1) * j * 0.8, d4: (Math.random() < 0.5 ? -1 : 1) * j * 0.5, d5: (Math.random() < 0.5 ? -1 : 1) * j * 0.4, r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 6 * int), r2: (Math.random() < 0.5 ? -1 : 1) * (4 + 5 * int), gx: 2 + 3 * int }; } },
+            inkBlot: { revealAt: 75, params: (int) => ({ b1: 4 + 4 * int, b2: 1.5 + 1.5 * int, s1: 1.4 + 0.5 * int, s2: 1.08 + 0.12 * int, r1: (Math.random() < 0.5 ? -1 : 1) * (6 + 8 * int), r2: (Math.random() < 0.5 ? -1 : 1) * (2 + 4 * int) }) },
+            magnetic: { revealAt: 55, params: (int, o) => { const side = o && o.side != null ? o.side : (Math.random() < 0.5 ? -1 : 1); const arc = (18 + 16 * int); return { d1: side * arc * (0.7 + Math.random() * 0.5), d2: arc * (0.4 + Math.random() * 0.6), d3: -side * (3 + 4 * int), d4: -(4 + 5 * int), s1: 0.4 + 0.1 * Math.random(), s2: 1.05 + 0.08 * int, r1: side * -(15 + 18 * int), r2: side * (6 + 8 * int) }; } },
+            xirtam: { revealAt: 65, params: (int) => ({ d1: -(22 + 18 * int), d2: -(6 + 4 * int), s1: 1.05 + 0.15 * int }) },
             destroy: {
                 params: (int, o) => {
                     const ang = o && typeof o.angle === 'number' ? o.angle : Math.random() * Math.PI * 2;
@@ -1242,7 +1288,7 @@
         // ═══════════════════════════════════════════════
         //  NativeEditor — contenteditable + animation
         // ═══════════════════════════════════════════════
-        function NativeEditor({ html, onContentChange, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delIntensity }) {
+        function NativeEditor({ html, onContentChange, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delIntensity, revealAtOverride }) {
             const editorRef = useRef(null);
             const overlayRef = useRef(null);
             const activeOverlays = useRef([]);
@@ -1466,6 +1512,85 @@
                 onChangeRef.current(editor.innerHTML, editor.innerText);
             }, []);
 
+            // Insert animated inline span for a character or text segment
+            const insertAnimatedSpan = useCallback((text, effect, opts) => {
+                const editor = editorRef.current;
+                if (!editor) return;
+
+                const sel = window.getSelection();
+                if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+
+                const range = sel.getRangeAt(0);
+
+                const isDestructive = DESTRUCTIVE_EFFECTS.has(effect);
+                const int = isDestructive ? delIntensity : intensity;
+                const dur = opts?.durationMs || (isDestructive ? delDuration : animDuration);
+
+                let extraVars = '';
+                if (EFFECTS[effect]?.vars) {
+                    extraVars = EFFECTS[effect].vars(int, opts || {});
+                } else if (EFFECTS[effect]?.params) {
+                    const p = EFFECTS[effect].params(int, opts);
+                    extraVars = buildVars(p);
+                }
+
+                const revealAt = Math.min(100, Math.max(0, revealAtOverride !== null ? revealAtOverride : (opts?.revealOverride ?? EFFECTS[effect]?.revealAt ?? 70)));
+
+                // Wrap each character in its own animated span for staggered animation on paste
+                const chars = text.split('');
+                const spans = [];
+                for (let i = 0; i < chars.length; i++) {
+                    const ch = chars[i];
+                    if (ch === '\n') continue;
+
+                    const span = document.createElement('span');
+                    span.className = `char-inline ${effect}`;
+                    span.textContent = ch;
+                    span.style.cssText = `--char-anim-duration:${dur}ms; --reveal-at:${revealAt}%; ${extraVars}`;
+
+                    // Stagger animations for multi-char inserts (paste)
+                    const staggerDelay = (chars.length > 1 && opts?.stagger !== false) ? Math.min(i * (8 + 5 * intensity), 2400) : 0;
+                    if (staggerDelay > 0) span.style.animationDelay = `${staggerDelay}ms`;
+
+                    // XIRTAM effect: cycle random ASCII chars before locking to real character
+                    if (effect === 'xirtam') {
+                        const asciiChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                        const xirtamInterval = setInterval(() => {
+                            span.textContent = asciiChars[Math.floor(Math.random() * asciiChars.length)];
+                        }, 30);
+                        setTimeout(() => {
+                            clearInterval(xirtamInterval);
+                            if (span.parentNode) span.textContent = ch;
+                        }, dur * 0.65 + staggerDelay);
+                    }
+
+                    // Clean up animation after it completes - remove class/styles but keep span as invisible wrapper
+                    const cleanupSpan = () => {
+                        if (!span.parentNode) return;
+                        span.className = '';
+                        span.style.cssText = 'opacity:1;display:inline;';
+                    };
+                    span.addEventListener('animationend', cleanupSpan, { once: true });
+                    setTimeout(cleanupSpan, dur + staggerDelay + 100);
+
+                    spans.push(span);
+                }
+
+                // Insert all spans at caret position using DocumentFragment to preserve order
+                if (spans.length > 0) {
+                    range.deleteContents();
+                    const fragment = document.createDocumentFragment();
+                    for (const span of spans) fragment.appendChild(span);
+                    range.insertNode(fragment);
+
+                    const lastSpan = spans[spans.length - 1];
+                    range.setStartAfter(lastSpan);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }, [animDuration, animEffect, deleteEffect, intensity, delDuration, delIntensity, revealAtOverride]);
+
             // Keyboard handler — intercept insert/delete for animation
             useEffect(() => {
                 const editor = editorRef.current;
@@ -1534,7 +1659,7 @@
                         }
                     }
 
-                    // Backspace — single char
+                    // Backspace — single char (use overlay for destructive effect)
                     if (e.key === 'Backspace' && range.collapsed) {
                         const textBefore = editor.innerText;
                         e.preventDefault();
@@ -1555,7 +1680,7 @@
                         return;
                     }
 
-                    // Delete — single char forward
+                    // Delete — single char forward (use overlay for destructive effect)
                     if (e.key === 'Delete' && range.collapsed) {
                         const nextRange = range.cloneRange();
                         nextRange.setStart(range.startContainer, range.startOffset);
@@ -1572,73 +1697,23 @@
                         }
                     }
 
-                    // Character insert — single printable key
-                    if (e.key.length === 1) {
+                    // Character insert — single printable key (use inline span)
+                    if (e.key.length === 1 && animEnabled) {
                         e.preventDefault();
-
-                        const char = e.key;
-                        document.execCommand('insertText', false, char);
-
-                        requestAnimationFrame(() => {
-                            ensureFreshStyle();
-                            const newSel = window.getSelection();
-                            if (!newSel.rangeCount) return;
-                            const newRange = newSel.getRangeAt(0);
-
-                            // Get bounds of the inserted character (just before caret)
-                            const charRange = newRange.cloneRange();
-                            charRange.setEnd(newRange.startContainer, newRange.startOffset);
-                            charRange.setStart(newRange.startContainer, Math.max(0, newRange.startOffset - 1));
-
-                            if (charRange.toString() === char) {
-                                const bounds = charRange.getBoundingClientRect();
-                                spawnOverlay(char, { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }, animEffect, {
-                                    dir: pickDirection(flyInDirection)
-                                });
-                            }
-                        });
-
+                        insertAnimatedSpan(e.key, animEffect, { dir: pickDirection(flyInDirection), stagger: false });
                         reportChange();
                     }
                 };
 
-                // Paste handler — animate pasted characters with generative effect + stagger
+                // Paste handler — wrap pasted content in animated inline spans
                 const handlePaste = (e) => {
                     if (!animEnabled || isComposing.current) return;
+                    e.preventDefault();
 
-                    const sel = window.getSelection();
-                    if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+                    const text = e.clipboardData.getData('text/plain');
+                    if (!text) return;
 
-                    // Capture state before paste: text length and insertion offset
-                    const beforeRange = sel.getRangeAt(0).cloneRange();
-                    const insertOffset = getStartOffsetInRange(editor, beforeRange);
-                    const beforeTextLength = editor.innerText.length;
-
-                    // Allow default paste to proceed (preserves formatting), then animate new chars only
-                    setTimeout(() => {
-                        requestAnimationFrame(() => {
-                            ensureFreshStyle();
-
-                            const afterTextLength = editor.innerText.length;
-                            if (afterTextLength <= beforeTextLength) return;
-
-                            const insertedLen = afterTextLength - beforeTextLength;
-                            // Use collectCharsInRange to get per-char bounds for just the pasted region
-                            const pastedData = collectCharsInRange(editor, insertOffset, insertedLen);
-
-                            if (!pastedData.chars.length) return;
-
-                            // Stagger animations: faster than typing but visible cascade (cap at 300 chars max animating)
-                            const maxAnimChars = Math.min(pastedData.chars.length, 300);
-                            for (let i = 0; i < maxAnimChars; i++) {
-                                spawnOverlay(pastedData.chars[i], pastedData.rects[i], animEffect, {
-                                    dir: pickDirection(flyInDirection),
-                                    delayMs: Math.min(i * (8 + 5 * intensity), 2400)
-                                });
-                            }
-                        });
-                    }, 15);
-
+                    insertAnimatedSpan(text, animEffect, { dir: pickDirection(flyInDirection), stagger: true });
                     reportChange();
                 };
 
@@ -1655,7 +1730,7 @@
                     editor.removeEventListener('input', handleInput);
                     editor.removeEventListener('paste', handlePaste);
                 };
-            }, [animEnabled, animEffect, flyInDirection, deleteEffect, intensity, spawnOverlay, spawnMassEffect, reportChange, ensureFreshStyle]);
+            }, [animEnabled, animEffect, flyInDirection, deleteEffect, intensity, spawnOverlay, spawnMassEffect, reportChange, insertAnimatedSpan]);
 
             return (
                 <div className="editor-area">
@@ -1702,7 +1777,7 @@
         // ═══════════════════════════════════════════════
         //  FloatWindow — draggable, resizable editor window
         // ═══════════════════════════════════════════════
-        function FloatWindow({ tab, x, y, w, h, minimized, maximized, focused, zIndex, onFocus, onMinimize, onMaximize, onClose, onDrag, onResize, onContentChange, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delIntensity }) {
+        function FloatWindow({ tab, x, y, w, h, minimized, maximized, focused, zIndex, onFocus, onMinimize, onMaximize, onClose, onDrag, onResize, onContentChange, animDuration, animEnabled, animEffect, flyInDirection, animOffset, deleteEffect, intensity, delDuration, delIntensity, revealAtOverride }) {
             const titlebarRef = useRef(null);
             const windowRef = useRef(null);
 
@@ -1799,6 +1874,7 @@
                             intensity={intensity}
                             delDuration={delDuration}
                             delIntensity={delIntensity}
+                            revealAtOverride={revealAtOverride}
                         />
                     )}
 
@@ -1835,6 +1911,7 @@
             const [intensity, setIntensity] = useState(1);
             const [delDuration, setDelDuration] = useState(200);
             const [delIntensity, setDelIntensity] = useState(1);
+            const [revealAtOverride, setRevealAtOverride] = useState(null);
 
             const workspaceRef = useRef(null);
             const [windows, setWindows] = useState(() => {
@@ -2094,6 +2171,12 @@
                                     onChange={e => setIntensity(parseFloat(e.target.value))} disabled={!animEnabled} style={{width: '65px'}} />
                                 <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '35px'}}>{intensity.toFixed(2)}x</span>
                             </div>
+                            <div className="toolbar-group">
+                                <label style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>Reveal At</label>
+                                <input type="number" min={0} max={100} step={5} value={revealAtOverride !== null ? revealAtOverride : EFFECTS[animEffect]?.revealAt ?? 70}
+                                    onChange={e => setRevealAtOverride(Math.min(100, Math.max(0, Number(e.target.value))))} disabled={!animEnabled} style={{width: '55px'}} />
+                                <span style={{fontSize: '11px', color: 'var(--text-muted)', minWidth: '25px'}}>%</span>
+                            </div>
                         </div>
 
                         {/* Row 4: Delete FX */}
@@ -2181,6 +2264,7 @@
                                     intensity={intensity}
                                     delDuration={delDuration}
                                     delIntensity={delIntensity}
+                                    revealAtOverride={revealAtOverride}
                                 />
                             );
                         })}
