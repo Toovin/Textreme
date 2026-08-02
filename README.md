@@ -1,6 +1,6 @@
 Two versions: 
 react-quil and react with quill cannibalized for hopefully more control. 
-
+(This would be pretty sleek as an AI assistant streaming text mod, just saying...)
 # Textreme
 Musings - Primarily Python/HTML/JS
 
