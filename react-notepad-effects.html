@@ -1538,10 +1538,17 @@
 
                 // Wrap each character in its own animated span for staggered animation on paste
                 const chars = text.split('');
-                const spans = [];
+                const nodes = [];
+                let animIndex = 0;
                 for (let i = 0; i < chars.length; i++) {
                     const ch = chars[i];
                     if (ch === '\n') continue;
+
+                    // Insert spaces as plain text to preserve positioning without animation artifacts
+                    if (ch === ' ') {
+                        nodes.push(document.createTextNode(' '));
+                        continue;
+                    }
 
                     const span = document.createElement('span');
                     span.className = `char-inline ${effect}`;
@@ -1549,7 +1556,7 @@
                     span.style.cssText = `--char-anim-duration:${dur}ms; --reveal-at:${revealAt}%; ${extraVars}`;
 
                     // Stagger animations for multi-char inserts (paste)
-                    const staggerDelay = (chars.length > 1 && opts?.stagger !== false) ? Math.min(i * (8 + 5 * intensity), 2400) : 0;
+                    const staggerDelay = (chars.length > 1 && opts?.stagger !== false) ? Math.min(animIndex * (8 + 5 * intensity), 2400) : 0;
                     if (staggerDelay > 0) span.style.animationDelay = `${staggerDelay}ms`;
 
                     // XIRTAM effect: cycle random ASCII chars before locking to real character
@@ -1568,23 +1575,24 @@
                     const cleanupSpan = () => {
                         if (!span.parentNode) return;
                         span.className = '';
-                        span.style.cssText = 'opacity:1;display:inline;';
+                        span.style.cssText = 'opacity:1;display:inline-block;';
                     };
                     span.addEventListener('animationend', cleanupSpan, { once: true });
                     setTimeout(cleanupSpan, dur + staggerDelay + 100);
 
-                    spans.push(span);
+                    nodes.push(span);
+                    animIndex++;
                 }
 
-                // Insert all spans at caret position using DocumentFragment to preserve order
-                if (spans.length > 0) {
+                // Insert all nodes at caret position using DocumentFragment to preserve order
+                if (nodes.length > 0) {
                     range.deleteContents();
                     const fragment = document.createDocumentFragment();
-                    for (const span of spans) fragment.appendChild(span);
+                    for (const node of nodes) fragment.appendChild(node);
                     range.insertNode(fragment);
 
-                    const lastSpan = spans[spans.length - 1];
-                    range.setStartAfter(lastSpan);
+                    const lastNode = nodes[nodes.length - 1];
+                    range.setStartAfter(lastNode);
                     range.collapse(true);
                     sel.removeAllRanges();
                     sel.addRange(range);
